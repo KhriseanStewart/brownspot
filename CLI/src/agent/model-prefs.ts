@@ -70,22 +70,24 @@ export function resolveChatModelId(userText = ""): string {
 }
 
 function pickAutoModel(userText: string): string {
-  const t = userText.toLowerCase();
+  const t = userText.toLowerCase().trim();
+
+  // Escalate only when the ask clearly needs strong reasoning.
   const hard =
     /\b(architect|architecture|refactor|security|prove|formal|complex|multi-?step|trade-?off|design system|deep dive|careful|thorough|opus)\b/.test(
       t,
     ) || t.length > 1200;
   if (hard) return MODEL_IDS.opus;
 
-  const trivial =
-    t.length < 80 &&
-    /^(hi|hey|hello|thanks|thank you|ok|okay|yes|no|yep|nope|cool|whoami|\/whoami)\b/.test(
-      t.trim(),
-    );
-  if (trivial) return MODEL_IDS.cheap;
+  // Coding / file / tool work stays on sonnet.
+  const coding =
+    /\b(code|coding|implement|fix|bug|debug|typescript|javascript|python|rust|sql|api|function|class|component|pr\b|git\b|commit|deploy|test|lint|typecheck|file|folder|repo|server|endpoint|docker|bun|npm)\b/.test(
+      t,
+    ) || t.length > 400;
+  if (coding) return MODEL_IDS.sonnet;
 
-  // Default auto path: sonnet (good quality, cheaper than opus)
-  return MODEL_IDS.sonnet;
+  // Everything else (greetings, small talk, short Q&A) → cheapest model.
+  return MODEL_IDS.cheap;
 }
 
 /** Models the hosted proxy may accept from the client. */
@@ -108,7 +110,7 @@ export function formatModelStatus(): string {
     "Choices:",
     "  opus    — Claude Opus (hardest reasoning)",
     "  sonnet  — Claude Sonnet (default quality)",
-    "  auto    — pick cheapest fit per turn (trivial→flash, normal→sonnet, hard→opus)",
+    "  auto    — cheapest fit: casual→flash, coding→sonnet, hard→opus",
     "",
     "Usage: /model          show this menu",
     "       /model opus     switch to opus",
