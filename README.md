@@ -1,47 +1,49 @@
 # BrownSpot
 
-Terminal AI agent CLI (`dotstart`), with desktop and mobile apps planned.
+Terminal AI agent (`dotstart`). Desktop and mobile apps planned.
 
-## Install (curl)
+## Install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/KhriseanStewart/brownspot/main/scripts/install.sh | bash
 ```
 
-This downloads the matching standalone binary from [GitHub Releases](https://github.com/KhriseanStewart/brownspot/releases) and installs `dotstart` to `~/.local/bin` (created if needed). Pin a version with `BROWNSPOT_VERSION=0.0.1`.
+That installs `dotstart` into `~/.local/bin` (override with `BROWNSPOT_INSTALL_DIR`).
 
-Then run:
+Pin a version:
 
 ```bash
+BROWNSPOT_VERSION=0.0.2 curl -fsSL https://raw.githubusercontent.com/KhriseanStewart/brownspot/main/scripts/install.sh | bash
+```
+
+Then:
+
+```bash
+dotstart login
 dotstart
+# or: bun run whoami / logout from a source checkout
 ```
 
-If the installer warns that `~/.local/bin` is not on your `PATH`, add:
+Make sure `~/.local/bin` is on your `PATH`.
 
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-## Layout
-
-- `CLI/` — Bun agent CLI (publish + curl install target)
-- `scripts/install.sh` — curl-friendly installer
-- `desktop/` — planned
-- `mobile/` — planned
-
-## Quick start (dev with Bun)
+## Develop from source
 
 ```bash
 cd CLI
 bun install
 cp .env.example .env
-bun run dev
-# or: bunx --bun .   /   bun link   then: dotstart
+# set AGENT_API_KEY, AGENT_MODEL, and Clerk keys (see CLI/README.md)
+bun run db:migrate   # optional local Postgres
+bun run dev          # always opens Clerk login if needed, then chat
 ```
 
-Build local standalones:
+## Layout
 
-```bash
-cd CLI
-bun run build:all   # writes CLI/dist/dotstart-{darwin,linux}-{arm64,x64}
-```
+- `CLI/` — Bun agent CLI
+- `desktop/` — planned
+- `mobile/` — planned
+- `scripts/install.sh` — curl installer
+
+## Auth
+
+Clerk PKCE (production Frontend API: `https://clerk.brownspot.terobytez.com`). Google SSO is enabled in the Clerk dashboard. Chat always requires login; `/whoami`, `/logout`, and `/login` work inside the REPL.

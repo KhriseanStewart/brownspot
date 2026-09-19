@@ -6,7 +6,8 @@ import {
   type StoredSession,
 } from "./credentials.ts";
 import { fetchUserInfo, refreshAccessToken, sessionFromTokens } from "./clerk-oauth.ts";
-import { AUTH_REQUIRED, BROWNSPOT_DEV_BYPASS } from "../config.ts";
+import { requireClerkConfig } from "../config.ts";
+import { runCliLogin } from "./login-flow.ts";
 
 export async function getValidSession(): Promise<StoredSession | null> {
   let session = loadSession();
@@ -29,14 +30,8 @@ export async function getValidSession(): Promise<StoredSession | null> {
   return null;
 }
 
+/** Require a real session; throw if missing (does not open browser). */
 export async function requireAuthSession(): Promise<StoredSession> {
-  if (BROWNSPOT_DEV_BYPASS) {
-    return {
-      accessToken: "dev-bypass",
-      userId: "dev_bypass_user",
-      email: "dev@localhost",
-    };
-  }
   const session = await getValidSession();
   if (!session) {
     throw new Error("Not logged in. Run: bun run login");
@@ -44,7 +39,20 @@ export async function requireAuthSession(): Promise<StoredSession> {
   return session;
 }
 
+/**
+ * Chat entry: if already logged in, return session;
+ * otherwise open Clerk PKCE login, then return the new session.
+ */
+export async function ensureLoggedInForChat(): Promise<StoredSession> {
+  const existing = await getValidSession();
+  if (existing) return existing;
+
+  console.log("Not logged in — opening browser to sign in with Clerk…");
+  requireClerkConfig();
+  return runCliLogin();
+}
+
+/** Auth is always required for the chat REPL. */
 export function authIsRequired(): boolean {
-  if (BROWNSPOT_DEV_BYPASS) return false;
-  return AUTH_REQUIRED;
+  return true;
 }

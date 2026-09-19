@@ -1,5 +1,5 @@
 import type { Context, Next } from "hono";
-import { CLERK_FRONTEND_API, CLERK_SECRET_KEY, BROWNSPOT_DEV_BYPASS } from "../config.ts";
+import { CLERK_FRONTEND_API, CLERK_SECRET_KEY } from "../config.ts";
 import { upsertUser } from "../db/users.ts";
 
 export type AuthUser = {
@@ -39,15 +39,6 @@ async function verifyWithClerkSecret(token: string): Promise<AuthUser | null> {
 }
 
 export async function requireAuth(c: Context, next: Next) {
-  if (BROWNSPOT_DEV_BYPASS) {
-    c.set("authUser", {
-      clerkUserId: "dev_bypass_user",
-      email: "dev@localhost",
-    });
-    await next();
-    return;
-  }
-
   const header = c.req.header("authorization") ?? "";
   const match = header.match(/^Bearer\s+(.+)$/i);
   if (!match) return c.json({ error: "Unauthorized" }, 401);

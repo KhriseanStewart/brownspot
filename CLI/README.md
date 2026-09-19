@@ -2,21 +2,7 @@
 
 Terminal AI agent (Bun + TypeScript) with OpenRouter chat, file tools, token-saving context, Mem0 personal memory, Clerk login, and a small Hono API.
 
-## Install (curl)
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/KhriseanStewart/brownspot/main/scripts/install.sh | bash
-```
-
-Installs the `dotstart` binary to `~/.local/bin`. Then:
-
-```bash
-dotstart
-```
-
-Optional: `BROWNSPOT_VERSION=0.0.1` to pin a release. Alias `agent` remains available when installing from source via `bun link`.
-
-## Setup (Bun development)
+## Setup
 
 ```bash
 bun install
@@ -52,30 +38,26 @@ The CLI opens a browser, listens on `http://127.0.0.1:{random}/callback`, and st
 ### 2) Paste into `.env`
 
 ```bash
-CLERK_OAUTH_CLIENT_ID=pk_…_or_oauth_client_id
+CLERK_OAUTH_CLIENT_ID=…          # public PKCE OAuth client id
 CLERK_FRONTEND_API=https://YOUR_INSTANCE.clerk.accounts.dev
-CLERK_SECRET_KEY=sk_live_…   # or sk_test_… for API JWT verify
-
-BROWNSPOT_AUTH_REQUIRED=true
-# Keep true on your machine until login works, then flip to false:
-BROWNSPOT_DEV_BYPASS=true
+CLERK_SECRET_KEY=sk_test_…       # or sk_live_…
+CLERK_PUBLISHABLE_KEY=pk_test_…  # optional; from clerk env pull
 ```
 
 ### 3) Commands
 
 ```bash
-bun run login     # browser PKCE login
-bun run whoami    # show current user / bypass
+bun run login     # browser PKCE login (also auto-runs from dev if needed)
+bun run whoami    # show current user
 bun run logout
-bun run dev       # gated chat REPL
+bun run dev       # always requires login → then chat REPL
 bun run api       # Hono API on :8787  (GET /health, /me, POST /v1/chat)
 ```
 
-When Clerk keys work, set `BROWNSPOT_DEV_BYPASS=false` so real login is required.
+`bun run dev` always opens Clerk login if you are signed out, then enters chat.
+In chat: `/whoami`, `/logout`, `/login`.
 
-## Run (dev bypass on)
-
-With `BROWNSPOT_DEV_BYPASS=true` you can chat without Clerk:
+## Run
 
 ```bash
 bun run dev
