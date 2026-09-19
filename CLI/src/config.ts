@@ -15,7 +15,7 @@ function boolEnv(name: string, fallback: boolean): boolean {
 }
 
 export const WORKSPACE = path.resolve(process.env.AGENT_WORKSPACE ?? process.cwd());
-export const MODEL = process.env.AGENT_MODEL;
+export const MODEL = process.env.AGENT_MODEL ?? "anthropic/claude-sonnet-5";
 export const API_KEY = process.env.AGENT_API_KEY;
 export const BASE_URL = process.env.AGENT_BASE_URL ?? "https://openrouter.ai/api/v1";
 export const MAX_STEPS = intEnv("AGENT_MAX_STEPS", 20);
@@ -51,10 +51,15 @@ export const MEM0_SEARCH_LIMIT = intEnv("AGENT_MEM0_SEARCH_LIMIT", 5);
 export const DATABASE_URL =
   process.env.DATABASE_URL ?? "postgresql://localhost/brownspot";
 
-/** Clerk OAuth (public PKCE client). Frontend API URL is the issuer. */
-export const CLERK_OAUTH_CLIENT_ID = process.env.CLERK_OAUTH_CLIENT_ID;
-/** e.g. https://your-app.clerk.accounts.dev */
-export const CLERK_FRONTEND_API = process.env.CLERK_FRONTEND_API;
+/**
+ * Public Clerk defaults (safe to ship in the binary).
+ * Override with env for local/dev. Never put AGENT_API_KEY defaults here.
+ */
+export const CLERK_OAUTH_CLIENT_ID =
+  process.env.CLERK_OAUTH_CLIENT_ID ?? "ZUsZKrqXcirFkQqM";
+/** Production Frontend API (custom domain). */
+export const CLERK_FRONTEND_API =
+  process.env.CLERK_FRONTEND_API ?? "https://clerk.brownspot.terobytez.com";
 export const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY;
 
 /** Require login for chat (Codex/Claude style). */
@@ -66,12 +71,38 @@ export const API_HOST = process.env.BROWNSPOT_API_HOST ?? "127.0.0.1";
 export const API_PORT = intEnv("BROWNSPOT_API_PORT", 8787);
 /** Fixed local port for Clerk PKCE callback (register exactly in Clerk). */
 export const OAUTH_CALLBACK_PORT = intEnv("BROWNSPOT_OAUTH_CALLBACK_PORT", 8788);
-export const BROWNSPOT_API_URL =
-  process.env.BROWNSPOT_API_URL ?? `http://${API_HOST}:${API_PORT}`;
+
+/**
+ * Hosted BrownSpot API — after Clerk login, the CLI calls this with the
+ * user access token. The server holds AGENT_API_KEY from your deploy .env.
+ */
+export const BROWNSPOT_API_URL = (
+  process.env.BROWNSPOT_API_URL ?? "https://api.brownspot.terobytez.com"
+).replace(/\/$/, "");
+
+/** True when this machine has a local OpenRouter key (dev / power users). */
+export function hasLocalLlmKey(): boolean {
+  return Boolean(API_KEY);
+}
+
+/** Prefer hosted API for end users (no local key). */
+export function useHostedLlm(): boolean {
+  return !hasLocalLlmKey();
+}
 
 export function requireConfig(): void {
+  // Hosted mode: Clerk login + BROWNSPOT_API_URL — no local AGENT_API_KEY.
+  if (useHostedLlm()) {
+    if (!CLERK_OAUTH_CLIENT_ID || !CLERK_FRONTEND_API) {
+      console.error("Missing Clerk public config.");
+      process.exit(1);
+    }
+    return;
+  }
   if (!MODEL || !API_KEY) {
-    console.error("Set AGENT_MODEL and AGENT_API_KEY (and optionally AGENT_BASE_URL) in .env");
+    console.error(
+      "Set AGENT_MODEL and AGENT_API_KEY in .env, or omit them to use the hosted BrownSpot API after login.",
+    );
     process.exit(1);
   }
 }
@@ -81,6 +112,13 @@ export function requireClerkConfig(): void {
     console.error(
       "Set CLERK_OAUTH_CLIENT_ID and CLERK_FRONTEND_API in .env (see README Auth section).",
     );
+    process.exit(1);
+  }
+}
+
+export function requireServerLlmConfig(): void {
+  if (!MODEL || !API_KEY) {
+    console.error("Server requires AGENT_MODEL and AGENT_API_KEY in the deploy environment.");
     process.exit(1);
   }
 }

@@ -1,8 +1,8 @@
-import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import type * as readline from "node:readline/promises";
-import { API_KEY, BASE_URL, MAX_STEPS, MODEL, WORKSPACE } from "../config.ts";
+import { MAX_STEPS, WORKSPACE } from "../config.ts";
 import { compactMessages, truncateToolResult } from "./context.ts";
+import { resolveLlm } from "./llm.ts";
 import {
   addMemoriesFromMessages,
   formatHitsForPrompt,
@@ -12,8 +12,6 @@ import {
 } from "./memory/index.ts";
 import { firstLine, renderMarkdown, spinner, style } from "./style.ts";
 import { runTool, tools } from "./tools.ts";
-
-const client = new OpenAI({ baseURL: BASE_URL, apiKey: API_KEY! });
 
 export async function createInitialMessages(): Promise<ChatCompletionMessageParam[]> {
   const fileMemory = await loadFileMemory();
@@ -43,7 +41,8 @@ export async function runTurn(
   messages: ChatCompletionMessageParam[],
   rl: readline.Interface,
 ): Promise<void> {
-  // Inject Mem0 hits for this user turn (ephemeral system note before the model call).
+  const { client, model } = await resolveLlm();
+
   let memNoteIndex = -1;
   if (isMem0Enabled()) {
     const q = lastUserText(messages);
@@ -66,11 +65,19 @@ export async function runTurn(
       const spin = spinner("thinking…");
       let res;
       try {
-        res = await client.chat.completions.create({ model: MODEL!, messages, tools });
+        res = await client.chat.completions.create({
+          model,
+          messages,
+          tools,
+        });
       } finally {
         spin.stop();
       }
-      const msg = res.choices[0].message;
+      const msg = res.choices[0]?.message;
+      if (!msg) {
+        console.log(style.red("No response from model."));
+        break;
+      }
       messages.push(msg);
 
       if (msg.content) {
@@ -96,7 +103,6 @@ export async function runTurn(
       }
     }
   } finally {
-    // Drop ephemeral mem note from long-term chat history so it doesn't bloat forever.
     if (memNoteIndex >= 0 && messages[memNoteIndex]?.role === "system") {
       const c = messages[memNoteIndex].content;
       if (typeof c === "string" && c.startsWith("Relevant memories for this user:")) {
@@ -113,7 +119,6 @@ export async function runTurn(
         content: typeof m.content === "string" ? m.content : "",
       }))
       .filter((m) => m.content);
-    // Fire-and-forget style but await so errors show before next prompt
     await addMemoriesFromMessages(forMem);
   }
 }
