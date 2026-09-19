@@ -1,4 +1,4 @@
-# BrownSpot installer for Windows — safe for: irm <URL> | iex
+# BrownSpot installer for Windows Terminal / PowerShell — safe for: irm <URL> | iex
 $ErrorActionPreference = "Stop"
 
 $Repo = "KhriseanStewart/brownspot"

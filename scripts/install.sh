@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # BrownSpot installer — safe for: curl -fsSL <URL> | bash
-# On native Windows use scripts/install.ps1 instead (irm … | iex).
-# This bash script covers macOS, Linux, and WSL.
+# Works on macOS, Linux, WSL, and Git Bash / MSYS on Windows.
+# Native Windows PowerShell: irm …/install.ps1 | iex
 set -euo pipefail
 
 REPO="KhriseanStewart/brownspot"
@@ -23,8 +23,10 @@ detect_target() {
   arch="$(uname -m)"
 
   case "$os" in
-    darwin|linux) ;;
-    *) err "unsupported OS: $(uname -s) (need macOS or Linux)" ;;
+    darwin) os="darwin" ;;
+    linux) os="linux" ;;
+    mingw*|msys*|cygwin*) os="windows" ;;
+    *) err "unsupported OS: $(uname -s) (need macOS, Linux, WSL, or Git Bash on Windows)" ;;
   esac
 
   case "$arch" in
@@ -34,6 +36,22 @@ detect_target() {
   esac
 
   printf '%s-%s' "$os" "$arch"
+}
+
+asset_name() {
+  local target="$1"
+  case "$target" in
+    windows-*) printf '%s-%s.exe' "$BIN_NAME" "$target" ;;
+    *) printf '%s-%s' "$BIN_NAME" "$target" ;;
+  esac
+}
+
+installed_bin_name() {
+  local target="$1"
+  case "$target" in
+    windows-*) printf '%s.exe' "$BIN_NAME" ;;
+    *) printf '%s' "$BIN_NAME" ;;
+  esac
 }
 
 resolve_version() {
@@ -53,8 +71,6 @@ resolve_version() {
 download() {
   local url="$1" dest="$2"
   if command -v curl >/dev/null 2>&1; then
-    # -f fail on HTTP errors, -L follow redirects, -# progress to stderr (visible under curl|bash)
-    # Avoid -s so large binaries do not look "stuck".
     curl -fL --progress-bar "$url" -o "$dest"
   elif command -v wget >/dev/null 2>&1; then
     wget -O "$dest" "$url"
@@ -66,15 +82,15 @@ download() {
 main() {
   need_cmd uname
   need_cmd mkdir
-  need_cmd chmod
   need_cmd mktemp
   need_cmd mv
 
-  local target version asset tag url tmp
+  local target version asset tag url tmp dest
   target="$(detect_target)"
   version="$(resolve_version)"
   tag="v${version}"
-  asset="${BIN_NAME}-${target}"
+  asset="$(asset_name "$target")"
+  dest="$(installed_bin_name "$target")"
   url="${GITHUB_DOWNLOAD}/${REPO}/releases/download/${tag}/${asset}"
 
   info "installing ${BIN_NAME} ${tag} (${target})"
@@ -89,7 +105,6 @@ main() {
     err "download failed: ${url}"
   fi
 
-  # Refuse empty / HTML error pages
   if [[ ! -s "$tmp" ]]; then
     err "downloaded file is empty — is release ${tag} published with ${asset}?"
   fi
@@ -97,11 +112,11 @@ main() {
     err "download returned HTML, not a binary — check that ${tag} includes ${asset}"
   fi
 
-  chmod +x "$tmp"
-  mv -f "$tmp" "${INSTALL_DIR}/${BIN_NAME}"
+  chmod +x "$tmp" 2>/dev/null || true
+  mv -f "$tmp" "${INSTALL_DIR}/${dest}"
   trap - EXIT
 
-  info "installed ${INSTALL_DIR}/${BIN_NAME}"
+  info "installed ${INSTALL_DIR}/${dest}"
 
   case ":${PATH}:" in
     *":${INSTALL_DIR}:"*) ;;
@@ -113,6 +128,7 @@ main() {
   esac
 
   info "run: ${BIN_NAME}"
+  info "Clerk login uses http://127.0.0.1:8788/callback"
 }
 
 main "$@"
