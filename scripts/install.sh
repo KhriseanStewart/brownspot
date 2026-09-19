@@ -121,9 +121,25 @@ main() {
   case ":${PATH}:" in
     *":${INSTALL_DIR}:"*) ;;
     *)
-      info "note: ${INSTALL_DIR} is not on your PATH"
-      info "add this to your shell profile, then reopen the terminal:"
+      info "note: ${INSTALL_DIR} is not on your PATH yet"
+      # Best-effort: persist PATH for common shells (user can still export now)
+      for profile in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
+        if [[ -f "$profile" ]] || [[ "$profile" == "$HOME/.profile" ]]; then
+          if ! grep -qF "${INSTALL_DIR}" "$profile" 2>/dev/null; then
+            {
+              echo ""
+              echo "# BrownSpot (dotstart)"
+              echo "export PATH=\"${INSTALL_DIR}:\$PATH\""
+            } >> "$profile"
+            info "added PATH to ${profile}"
+          fi
+          break
+        fi
+      done
+      info "for this terminal, run:"
       info "  export PATH=\"${INSTALL_DIR}:\$PATH\""
+      info "or run directly:"
+      info "  ${INSTALL_DIR}/${dest}"
       ;;
   esac
 
