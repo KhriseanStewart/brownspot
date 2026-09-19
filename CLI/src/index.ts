@@ -10,7 +10,9 @@ import {
   WORKSPACE,
   requireConfig,
   useHostedLlm,
+  CLERK_FRONTEND_API,
 } from "./config.ts";
+import { PRODUCT } from "./product.ts";
 import {
   createInitialMessages,
   ensureAgentDirs,
@@ -57,6 +59,11 @@ async function main() {
     process.env.AGENT_USER_ID = session.userId;
   }
   console.log(style.dim(`auth · ${session.email ?? session.userId}`));
+  console.log(
+    style.dim(
+      `product · ${PRODUCT.name} · clerk ${CLERK_FRONTEND_API.replace("https://", "")}`,
+    ),
+  );
   if (useHostedLlm()) {
     console.log(style.dim(`llm · hosted ${BROWNSPOT_API_URL}`));
   } else {
