@@ -148,3 +148,43 @@ main() {
 }
 
 main "$@"
+
+# --- snip (CLI Token Killer) sidecar ---
+install_snip() {
+  local snip_home="${HOME}/.agent-cli/snip/bin"
+  mkdir -p "$snip_home"
+  local os arch asset archive bin
+  os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  arch="$(uname -m)"
+  case "$arch" in
+    x86_64|amd64) arch=amd64 ;;
+    arm64|aarch64) arch=arm64 ;;
+  esac
+  case "$os" in
+    darwin) asset="darwin_${arch}"; archive=tar.gz; bin=snip ;;
+    linux) asset="linux_${arch}"; archive=tar.gz; bin=snip ;;
+    *) echo "snip: unsupported OS $os (skip)"; return 0 ;;
+  esac
+  local api="https://api.github.com/repos/edouard-claude/snip/releases/latest"
+  local tag
+  tag="$(curl -fsSL "$api" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1 | sed 's/^v//')"
+  [ -n "$tag" ] || { echo "snip: could not resolve version"; return 0; }
+  local url="https://github.com/edouard-claude/snip/releases/download/v${tag}/snip_${tag}_${asset}.${archive}"
+  local tmp
+  tmp="$(mktemp -d)"
+  echo "Installing snip v${tag}…"
+  if curl -fsSL "$url" -o "$tmp/snip.${archive}"; then
+    tar -xf "$tmp/snip.${archive}" -C "$tmp"
+    local found
+    found="$(find "$tmp" -type f -name snip | head -1)"
+    if [ -n "$found" ]; then
+      install -m 755 "$found" "$snip_home/snip"
+      echo "snip → $snip_home/snip"
+    fi
+  else
+    echo "snip: download failed (optional — /tokens will prompt)"
+  fi
+  rm -rf "$tmp"
+}
+install_snip
+

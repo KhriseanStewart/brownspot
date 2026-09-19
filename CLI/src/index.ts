@@ -29,6 +29,8 @@ import { cmdLogout } from "./cli/commands/logout.ts";
 import { cmdWhoami, printWhoami } from "./cli/commands/whoami.ts";
 import { cmdUpdate } from "./cli/commands/update.ts";
 import { handleModelCommand, modelLabelForBanner } from "./agent/model-prefs.ts";
+import { handleTokensCommand } from "./agent/tokens-command.ts";
+import { isSnipAvailable, snipVersion } from "./agent/snip.ts";
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -69,6 +71,11 @@ async function main() {
   } else {
     console.log(style.dim(`llm · local OpenRouter key`));
   }
+  if (isSnipAvailable()) {
+    console.log(style.dim(`snip · ${snipVersion() ?? "ready"} · /tokens`));
+  } else {
+    console.log(style.dim("snip · not bundled yet · bun run download-snip"));
+  }
 
   if (isMem0Enabled()) ensureReady();
 
@@ -79,12 +86,12 @@ async function main() {
   if (isMem0Enabled()) {
     console.log(
       style.dim(
-        `memory on · ${memoryBackend()} · user ${getAgentUserId()}${AGENT_AGENT_ID ? ` · agent ${AGENT_AGENT_ID}` : ` · role ${AGENT_ROLE}`} · /model · /memory help · /whoami · /update\n`,
+        `memory on · ${memoryBackend()} · user ${getAgentUserId()}${AGENT_AGENT_ID ? ` · agent ${AGENT_AGENT_ID}` : ` · role ${AGENT_ROLE}`} · /model · /tokens · /memory help · /whoami · /update\n`,
       ),
     );
   } else {
     console.log(
-      style.dim(`memory off · /model · /memory help · /whoami · /update\n`),
+      style.dim(`memory off · /model · /tokens · /memory help · /whoami · /update\n`),
     );
   }
 
@@ -123,6 +130,7 @@ async function main() {
       continue;
     }
     if (handleModelCommand(line)) continue;
+    if (handleTokensCommand(line)) continue;
     if (await handleMemoryCommand(line)) continue;
 
     messages.push({ role: "user", content: line });

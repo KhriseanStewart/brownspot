@@ -36,3 +36,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # agent runtime
 .agent-trash
 AGENT_MEMORY.md
+
+resources/snip/**/snip
+resources/snip/**/snip.exe
