@@ -65,7 +65,12 @@ async function download(url, dest) {
 
 function extract(archive, dest) {
   mkdirSync(dest, { recursive: true });
-  execFileSync("tar", ["-xf", archive, "-C", dest]);
+  if (archive.endsWith(".zip")) {
+    // GNU tar on Ubuntu CI does not reliably unpack zip; use unzip.
+    execFileSync("unzip", ["-o", "-q", archive, "-d", dest]);
+  } else {
+    execFileSync("tar", ["-xf", archive, "-C", dest]);
+  }
 }
 
 function findBinary(dir, name) {
