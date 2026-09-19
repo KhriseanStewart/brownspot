@@ -5,6 +5,7 @@ import type * as readline from "node:readline/promises";
 import { WORKSPACE } from "../config.ts";
 import { runShellFiltered } from "./snip.ts";
 import { style } from "./style.ts";
+import { formatCommandCatalog, runCatalogCommand } from "./command-runner.ts";
 
 /** Keep every path inside the workspace. Does not resolve symlinks yet. */
 export function resolveSafe(p: string): string {
@@ -82,6 +83,49 @@ export const tools: ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "list_agent_commands",
+      description:
+        "List curated shell commands from the Postgres catalog (git, gh, ssh, bun, docker, curl, etc.). Prefer these over inventing ad-hoc run_shell when a matching slug exists. Filter by category or search query.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            description: "Optional category filter (git, github, ssh, package, docker, network, system, database, cloud).",
+          },
+          q: {
+            type: "string",
+            description: "Optional search across slug, name, description.",
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "run_agent_command",
+      description:
+        "Run one catalog command by slug with JSON params. Templates are interpolated and shell-quoted. High/critical (and requires_approval) commands ask the user y/N first. Prefer this for git push, SSH, gh PR, etc.",
+      parameters: {
+        type: "object",
+        properties: {
+          slug: {
+            type: "string",
+            description: "Command slug from list_agent_commands (e.g. git.push, ssh.run).",
+          },
+          params: {
+            type: "string",
+            description: 'JSON object of params, e.g. {"message":"fix typo"} or {"remote":"origin","branch":"HEAD"}. Empty "{}" if none.',
+          },
+        },
+        required: ["slug"],
+      },
+    },
+  },
 ];
 
 async function approve(rl: readline.Interface, action: string): Promise<boolean> {
@@ -142,6 +186,13 @@ export async function runTool(
         const body = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
         return `${parts.join(" · ")}\n${body || "(no output)"}`;
       }
+      case "list_agent_commands":
+        return await formatCommandCatalog({
+          category: args.category,
+          q: args.q,
+        });
+      case "run_agent_command":
+        return await runCatalogCommand(args.slug ?? "", args.params ?? "{}", rl);
       default:
         return `Unknown tool: ${name}`;
     }

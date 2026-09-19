@@ -22,7 +22,7 @@ export async function createInitialMessages(): Promise<ChatCompletionMessagePara
       content:
         `You are a helpful general-purpose assistant running in a CLI. ` +
         `Your workspace is ${WORKSPACE}. Answer normal questions directly. ` +
-        `Only use file tools when the user asks you to inspect or change files. Be concise. ` +
+        `Only use file tools when the user asks you to inspect or change files. Be concise. For git/gh/ssh/docker/package ops prefer list_agent_commands then run_agent_command (catalog in Postgres; extensible). Use run_shell for one-off commands not in the catalog. ` +
         `Do not write AGENT_MEMORY.md unless the user explicitly asks — lasting preferences are stored by the memory system automatically.` +
         (fileMemory ? `\n\nPersistent file memory (AGENT_MEMORY.md):\n${fileMemory}` : ""),
     },
