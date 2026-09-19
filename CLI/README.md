@@ -113,3 +113,14 @@ irm https://raw.githubusercontent.com/KhriseanStewart/brownspot/main/scripts/ins
 
 Clerk PKCE still uses `http://127.0.0.1:8788/callback`. Allow the Windows Firewall prompt for the local callback if asked.
 
+## Agent command catalog (Postgres)
+
+Curated, extensible shell commands live in the `agent_commands` table (git, `gh`, SSH/SCP, Bun/npm, Docker, curl, system, DB, Cloudflare). The agent discovers them with `list_agent_commands` and runs them with `run_agent_command` (params are shell-quoted; high/critical ask for approval). Runs are audited in `agent_command_runs`.
+
+```bash
+bun run db:migrate
+bun run db:seed-commands   # safe to re-run; upserts by slug
+```
+
+Add more later with another seed row or `INSERT`/`ON CONFLICT` against `agent_commands`. Ad-hoc commands still use `run_shell`.
+

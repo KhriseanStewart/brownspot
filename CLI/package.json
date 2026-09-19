@@ -27,7 +27,8 @@
     "download-snip": "node scripts/download-snip.mjs",
     "download-snip:all": "node scripts/download-snip.mjs --all",
     "postinstall": "node scripts/download-snip.mjs || true",
-    "test": "bun test"
+    "test": "bun test",
+    "db:seed-commands": "bun run src/db/seed-commands.ts"
   },
   "dependencies": {
     "hono": "^4.13.8",
