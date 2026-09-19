@@ -1,6 +1,6 @@
 {
   "name": "brownspot",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "type": "module",
   "bin": {
     "dotstart": "src/index.ts",
@@ -20,10 +20,14 @@
     "build:darwin-x64": "mkdir -p dist && bun build --compile --target=bun-darwin-x64 ./src/index.ts --outfile dist/dotstart-darwin-x64",
     "build:linux-x64": "mkdir -p dist && bun build --compile --target=bun-linux-x64 ./src/index.ts --outfile dist/dotstart-linux-x64",
     "build:linux-arm64": "mkdir -p dist && bun build --compile --target=bun-linux-arm64 ./src/index.ts --outfile dist/dotstart-linux-arm64",
-    "build:all": "bun run build:darwin-arm64 && bun run build:darwin-x64 && bun run build:linux-x64 && bun run build:linux-arm64 && bun run build:windows-x64 && bun run build:windows-arm64",
+    "build:all": "bun run download-snip:all && bun run build:darwin-arm64 && bun run build:darwin-x64 && bun run build:linux-x64 && bun run build:linux-arm64 && bun run build:windows-x64 && bun run build:windows-arm64",
     "build:windows-x64": "mkdir -p dist && bun build --compile --target=bun-windows-x64 ./src/index.ts --outfile dist/dotstart-windows-x64.exe",
     "build:windows-arm64": "mkdir -p dist && bun build --compile --target=bun-windows-arm64 ./src/index.ts --outfile dist/dotstart-windows-arm64.exe",
-    "update": "bun run src/index.ts update"
+    "update": "bun run src/index.ts update",
+    "download-snip": "node scripts/download-snip.mjs",
+    "download-snip:all": "node scripts/download-snip.mjs --all",
+    "postinstall": "node scripts/download-snip.mjs || true",
+    "test": "bun test"
   },
   "dependencies": {
     "hono": "^4.13.8",

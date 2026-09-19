@@ -3,6 +3,7 @@ import * as fs from "node:fs/promises";
 import path from "node:path";
 import type * as readline from "node:readline/promises";
 import { WORKSPACE } from "../config.ts";
+import { runShellFiltered } from "./snip.ts";
 import { style } from "./style.ts";
 
 /** Keep every path inside the workspace. Does not resolve symlinks yet. */
@@ -63,12 +64,36 @@ export const tools: ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "run_shell",
+      description:
+        "Run a shell command in the workspace. Output is filtered through snip when available to save tokens. Ask before destructive commands.",
+      parameters: {
+        type: "object",
+        properties: {
+          command: {
+            type: "string",
+            description: "Shell command to run (e.g. git status, bun test).",
+          },
+        },
+        required: ["command"],
+      },
+    },
+  },
 ];
 
 async function approve(rl: readline.Interface, action: string): Promise<boolean> {
   const prompt = `\n${style.yellow("?")} ${style.bold("Allow:")} ${action} ${style.dim("[y/N]")} `;
   const answer = await rl.question(prompt);
   return answer.trim().toLowerCase() === "y";
+}
+
+function looksDangerous(command: string): boolean {
+  return /\b(rm\s+-rf|sudo|mkfs|dd\s+if=|shutdown|reboot|curl\s+[^\n]*\|\s*(ba)?sh)\b/i.test(
+    command,
+  );
 }
 
 export async function runTool(
@@ -100,6 +125,22 @@ export async function runTool(
         await fs.mkdir(trash, { recursive: true });
         await fs.rename(abs, path.join(trash, `${Date.now()}-${path.basename(abs)}`));
         return `Moved ${args.path} to .agent-trash`;
+      }
+      case "run_shell": {
+        const command = (args.command ?? "").trim();
+        if (!command) return "Error: empty command";
+        if (looksDangerous(command)) {
+          if (!(await approve(rl, `run shell: ${command}`))) {
+            return "User denied this action.";
+          }
+        }
+        const result = runShellFiltered(command, { cwd: WORKSPACE });
+        const parts = [
+          result.usedSnip ? "[snip filtered]" : "[raw shell]",
+          `exit ${result.status ?? "?"}`,
+        ];
+        const body = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
+        return `${parts.join(" · ")}\n${body || "(no output)"}`;
       }
       default:
         return `Unknown tool: ${name}`;

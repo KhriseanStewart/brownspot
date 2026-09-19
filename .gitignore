@@ -33,3 +33,7 @@
 CLI/dist/
 dotstart-darwin-*
 dotstart-linux-*
+
+# Snip sidecars (downloaded by scripts/download-snip.mjs)
+CLI/resources/snip/**/snip
+CLI/resources/snip/**/snip.exe
