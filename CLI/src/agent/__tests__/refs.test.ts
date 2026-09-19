@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { contentHash, combineHashes } from "../refs/hash.ts";
 import {
   assertSafeProjectPath,
+  normalizeUserPath,
   isLikelyBinaryPath,
   resolveUnderRoot,
   shouldSkipName,
@@ -33,7 +34,20 @@ describe("refs ignore + path safety", () => {
     expect(resolveUnderRoot("/tmp/proj", "src/a.ts")).toBe("/tmp/proj/src/a.ts");
   });
 
-  test("assertSafeProjectPath requires absolute", () => {
+
+  test("normalizeUserPath strips wrapping quotes and expands ~", () => {
+    expect(normalizeUserPath("'/tmp/my-app'")).toBe("/tmp/my-app");
+    expect(normalizeUserPath('"/tmp/other"')).toBe("/tmp/other");
+    const home = normalizeUserPath("~/Projects/demo");
+    expect(home.startsWith("/")).toBe(true);
+    expect(home).toContain("Projects/demo");
+  });
+
+  test("assertSafeProjectPath accepts quoted absolute paths", () => {
+    expect(assertSafeProjectPath("'/tmp/quoted-app'")).toBe("/tmp/quoted-app");
+  });
+
+  test("assertSafeProjectPath normalizes absolute", () => {
     const abs = assertSafeProjectPath("/tmp/my-app");
     expect(abs).toBe("/tmp/my-app");
   });

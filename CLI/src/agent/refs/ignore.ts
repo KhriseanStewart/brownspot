@@ -87,17 +87,46 @@ export function resolveUnderRoot(root: string, candidate: string): string {
   return abs;
 }
 
-/** Absolute local path must exist as a directory and not look like a secret dump. */
+/**
+ * Normalize a path typed/pasted by a human:
+ * trim, strip wrapping quotes (incl. smart quotes), expand ~, resolve absolute.
+ */
+export function normalizeUserPath(raw: string, cwd = process.cwd()): string {
+  let s = raw.trim();
+  const quotePairs: Array<[string, string]> = [
+    ["'", "'"],
+    ['"', '"'],
+    ["\u2018", "\u2019"],
+    ["\u201c", "\u201d"],
+    ["`", "`"],
+  ];
+  for (const [open, close] of quotePairs) {
+    if (s.length >= 2 && s.startsWith(open) && s.endsWith(close)) {
+      s = s.slice(open.length, -close.length).trim();
+      break;
+    }
+  }
+  // Unbalanced paste: strip leftover edge quotes
+  s = s.replace(/^['"`\u2018\u2019\u201c\u201d]+/, "").replace(/['"`\u2018\u2019\u201c\u201d]+$/, "").trim();
+
+  if (s.startsWith("~/") || s === "~") {
+    const home = process.env.HOME || process.env.USERPROFILE || "";
+    s = s === "~" ? home : path.join(home, s.slice(2));
+  }
+  return path.resolve(cwd, s);
+}
+
+/** Absolute local path after human-input cleanup; rejects secret-like basenames. */
 export function assertSafeProjectPath(localPath: string): string {
-  const abs = path.resolve(localPath);
-  if (!path.isAbsolute(abs)) {
+  const finalAbs = normalizeUserPath(localPath);
+  if (!path.isAbsolute(finalAbs)) {
     throw new Error(`Project path must be absolute: ${localPath}`);
   }
-  const base = path.basename(abs);
+  const base = path.basename(finalAbs);
   if (shouldSkipName(base) && base !== ".") {
     throw new Error(`Refusing to index path named ${base}`);
   }
-  return abs;
+  return finalAbs;
 }
 
 export type WalkCaps = {

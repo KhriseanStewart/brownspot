@@ -35,11 +35,12 @@ export async function handleRefsCommand(
 
   const prefix = line.startsWith("/projects") ? "/projects" : "/refs";
   const rest = line.slice(prefix.length).trim();
-  const [cmd, ...args] = rest ? rest.split(/\s+/) : ["list"];
-  const arg = args.join(" ").trim();
+  const space = rest.search(/\s/);
+  const cmd = (space === -1 ? rest || "list" : rest.slice(0, space)).toLowerCase() || "list";
+  const arg = space === -1 ? "" : rest.slice(space + 1).trim();
 
   try {
-    switch (cmd.toLowerCase()) {
+    switch (cmd) {
       case "help":
         console.log(helpText());
         return true;
@@ -75,7 +76,7 @@ export async function handleRefsCommand(
           );
           return true;
         }
-        const abs = assertSafeProjectPath(path.resolve(arg));
+        const abs = assertSafeProjectPath(arg);
         if (!fs.existsSync(abs) || !fs.statSync(abs).isDirectory()) {
           console.log(style.yellow(`Not a directory: ${abs}`));
           return true;
