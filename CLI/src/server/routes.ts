@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { refsApi } from "./refs-routes.ts";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import OpenAI from "openai";
 import { API_KEY, BASE_URL, MODEL } from "../config.ts";
@@ -7,6 +8,7 @@ import { requireAuth } from "./auth-middleware.ts";
 import { getDb } from "../db/client.ts";
 
 export const api = new Hono();
+api.route("/", refsApi);
 
 api.get("/health", async (c) => {
   let dbOk = false;

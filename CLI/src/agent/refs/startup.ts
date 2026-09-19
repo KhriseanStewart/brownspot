@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type * as readline from "node:readline/promises";
-import { BROWNSPOT_MAX_REFS, WORKSPACE } from "../../config.ts";
+import { BROWNSPOT_MAX_REFS, WORKSPACE, shouldUseRemoteDb, BROWNSPOT_API_URL } from "../../config.ts";
 import { style } from "../style.ts";
 import { assertSafeProjectPath } from "./ignore.ts";
 import { ingestProject } from "./ingest.ts";
@@ -204,6 +204,9 @@ export async function runRefsStartup(
   clerkUserId: string,
 ): Promise<void> {
   try {
+    if (shouldUseRemoteDb()) {
+      console.log(style.dim(`refs · hosted DB via ${BROWNSPOT_API_URL}`));
+    }
     await ensureActiveProject(clerkUserId, WORKSPACE);
     await promptOptionalRefs(rl, clerkUserId);
     console.log(style.dim("refs · refreshing active project index…"));
@@ -211,10 +214,10 @@ export async function runRefsStartup(
   } catch (e) {
     const msg = (e instanceof Error ? e.message : String(e)).trim() || "database unavailable";
     console.log(style.dim(`refs · skipped (${msg})`));
-    console.log(
-      style.dim(
-        "  Set DATABASE_URL in the host .env for project indexing, or /refs later.",
-      ),
-    );
+    if (shouldUseRemoteDb()) {
+      console.log(style.dim("  Hosted refs API failed — is the BrownSpot API up?"));
+    } else {
+      console.log(style.dim("  Set DATABASE_URL or use hosted API after login."));
+    }
   }
 }

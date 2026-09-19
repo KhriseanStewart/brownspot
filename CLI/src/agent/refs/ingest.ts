@@ -24,6 +24,8 @@ import {
   recordEvent,
   updateIngestMeta,
 } from "./store.ts";
+import { shouldUseRemoteDb } from "../../config.ts";
+import { remoteCommitIngest } from "./remote.ts";
 import type { ChunkKind, ReferenceProject } from "./types.ts";
 
 type FileChunk = {
@@ -204,14 +206,20 @@ export async function ingestProject(
   project: ReferenceProject,
   opts?: { force?: boolean },
 ): Promise<IngestResult> {
-  const db = getDb();
   let root: string;
   try {
     root = assertSafeProjectPath(project.local_path);
     await fs.access(root);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    const snap = await db<{ id: number }[]>`
+    if (shouldUseRemoteDb()) {
+      await recordEvent(project.id, "ingested", {
+        metadata: { status: "error", error: msg },
+      });
+      return { status: "error", fileCount: 0, chunkCount: 0, contentHash: "", error: msg };
+    }
+    const dbEarly = getDb();
+    const snap = await dbEarly<{ id: number }[]>`
       INSERT INTO project_snapshots (project_id, status, error)
       VALUES (${project.id}, 'error', ${msg})
       RETURNING id
@@ -224,6 +232,27 @@ export async function ingestProject(
   }
 
   const { chunks, treeHash, fileCount } = await walkProject(root);
+
+  if (shouldUseRemoteDb()) {
+    const profile = await distillProfile(project, chunks);
+    return remoteCommitIngest({
+      slug: project.slug,
+      force: opts?.force,
+      treeHash,
+      fileCount,
+      chunks: chunks.map((c) => ({
+        kind: c.kind,
+        path: c.path,
+        title: c.title,
+        content: c.content,
+        contentHash: c.contentHash,
+        highValue: c.highValue,
+      })),
+      profile,
+    });
+  }
+
+  const db = getDb();
 
   if (
     !opts?.force &&

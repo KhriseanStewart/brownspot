@@ -1,5 +1,6 @@
 import { getDb } from "../../db/client.ts";
-import { REF_CONTEXT_BUDGET, REF_SEARCH_LIMIT } from "../../config.ts";
+import { REF_CONTEXT_BUDGET, REF_SEARCH_LIMIT, shouldUseRemoteDb } from "../../config.ts";
+import { remoteSearch } from "./remote.ts";
 import type { ProjectRole, RetrievedChunk } from "./types.ts";
 
 /**
@@ -27,6 +28,14 @@ export async function searchReferenceContext(
 ): Promise<RetrievedChunk[]> {
   const q = buildFtsQuery(opts.query);
   if (!q) return [];
+
+  if (shouldUseRemoteDb()) {
+    return remoteSearch({
+      query: opts.query,
+      limit: opts.limit,
+      roles: opts.roles,
+    });
+  }
 
   const limit = opts.limit ?? REF_SEARCH_LIMIT;
   const db = getDb();

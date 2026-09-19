@@ -2,7 +2,16 @@ import fs from "node:fs";
 import path from "node:path";
 import { getDb } from "../../db/client.ts";
 import { AGENT_HOME, ensureAgentDirs } from "../memory/paths.ts";
-import { BROWNSPOT_MAX_REFS } from "../../config.ts";
+import { BROWNSPOT_MAX_REFS, shouldUseRemoteDb } from "../../config.ts";
+import {
+  remoteGetProject,
+  remoteLatestEvents,
+  remoteListProjects,
+  remoteRecordEvent,
+  remoteRemoveProject,
+  remoteUpdateIngestMeta,
+  remoteUpsertProject,
+} from "./remote.ts";
 import type {
   ProjectEventType,
   ProjectRole,
@@ -37,6 +46,7 @@ export async function listProjects(
   clerkUserId: string,
   opts?: { role?: ProjectRole; enabledOnly?: boolean },
 ): Promise<ReferenceProject[]> {
+  if (shouldUseRemoteDb()) return remoteListProjects(opts);
   const db = getDb();
   const role = opts?.role;
   const enabledOnly = opts?.enabledOnly ?? false;
@@ -76,6 +86,7 @@ export async function getProjectBySlug(
   clerkUserId: string,
   slug: string,
 ): Promise<ReferenceProject | null> {
+  if (shouldUseRemoteDb()) return remoteGetProject(slug);
   const db = getDb();
   const rows = await db<ReferenceProject[]>`
     SELECT * FROM reference_projects
@@ -90,6 +101,10 @@ export async function recordEvent(
   eventType: ProjectEventType,
   opts?: { snapshotId?: number | null; metadata?: Record<string, unknown> },
 ): Promise<void> {
+  if (shouldUseRemoteDb()) {
+    await remoteRecordEvent(projectId, eventType, opts);
+    return;
+  }
   const db = getDb();
   await db`
     INSERT INTO project_events (project_id, event_type, snapshot_id, metadata)
@@ -112,6 +127,19 @@ export async function upsertProject(input: {
   isPrimary?: boolean;
   sortOrder?: number;
 }): Promise<ReferenceProject> {
+  if (shouldUseRemoteDb()) {
+    const project = await remoteUpsertProject({
+      slug: input.slug,
+      label: input.label,
+      localPath: input.localPath,
+      projectRole: input.projectRole,
+      enabled: input.enabled,
+      isPrimary: input.isPrimary,
+      sortOrder: input.sortOrder,
+    });
+    await writeRefsCache(input.clerkUserId);
+    return project;
+  }
   const db = getDb();
   if (input.projectRole === "reference") {
     const refs = await listProjects(input.clerkUserId, { role: "reference" });
@@ -159,6 +187,11 @@ export async function removeProject(
   clerkUserId: string,
   slug: string,
 ): Promise<boolean> {
+  if (shouldUseRemoteDb()) {
+    const ok = await remoteRemoveProject(slug);
+    if (ok) await writeRefsCache(clerkUserId);
+    return ok;
+  }
   const existing = await getProjectBySlug(clerkUserId, slug);
   if (!existing) return false;
   const db = getDb();
@@ -175,6 +208,10 @@ export async function updateIngestMeta(
   projectId: number,
   contentHash: string,
 ): Promise<void> {
+  if (shouldUseRemoteDb()) {
+    await remoteUpdateIngestMeta(projectId, contentHash);
+    return;
+  }
   const db = getDb();
   await db`
     UPDATE reference_projects
@@ -189,6 +226,7 @@ export async function latestEvents(
   projectId: number,
   limit = 5,
 ): Promise<Array<{ event_type: string; created_at: Date | string; metadata: unknown }>> {
+  if (shouldUseRemoteDb()) return remoteLatestEvents(projectId, limit);
   const db = getDb();
   return db`
     SELECT event_type, created_at, metadata

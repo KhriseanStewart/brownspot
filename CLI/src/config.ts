@@ -104,6 +104,24 @@ export function useHostedLlm(): boolean {
   return !hasLocalLlmKey();
 }
 
+/**
+ * End-user binaries rarely have DATABASE_URL. Prefer the hosted API
+ * (which holds Railway Postgres) instead of defaulting to localhost.
+ * An explicit remote DATABASE_URL (e.g. Railway) uses direct Postgres.
+ */
+export function shouldUseRemoteDb(): boolean {
+  const raw = process.env.DATABASE_URL?.trim();
+  if (raw && raw.length > 0) {
+    const isLoopback =
+      /@localhost\b/i.test(raw) ||
+      /@127\.0\.0\.1\b/.test(raw) ||
+      raw === "postgresql://localhost/brownspot";
+    if (!isLoopback) return false;
+  }
+  return Boolean(BROWNSPOT_API_URL);
+}
+
+
 
 /** Reference / active project RAG */
 export const BROWNSPOT_MAX_REFS = intEnv("BROWNSPOT_MAX_REFS", 3);
