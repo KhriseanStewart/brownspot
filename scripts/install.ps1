@@ -50,13 +50,17 @@ try {
   Move-Item -Force -Path $tmp -Destination $dest
   Write-Info "installed $dest"
 
-  $onPath = ($env:PATH -split ';' | Where-Object { $_ -and ($_ -ieq $InstallDir) })
-  if (-not $onPath) {
-    Write-Info "note: $InstallDir is not on your PATH"
-    Write-Info "add it for this user (PowerShell), then reopen the terminal:"
-    Write-Info "  [Environment]::SetEnvironmentVariable('Path', `$env:Path + ';$InstallDir', 'User')"
+  $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+  if (-not $userPath) { $userPath = '' }
+  $parts = @($userPath -split ';' | Where-Object { $_ -and $_.Trim() })
+  if (-not ($parts | Where-Object { $_ -ieq $InstallDir })) {
+    $newPath = if ($userPath.Trim()) { "$userPath;$InstallDir" } else { $InstallDir }
+    [Environment]::SetEnvironmentVariable('Path', $newPath, 'User')
+    $env:Path = "$InstallDir;$env:Path"
+    Write-Info "added $InstallDir to your user PATH (new terminals will pick it up)"
   }
   Write-Info "run: $BinName"
+  Write-Info "or:  $dest"
   Write-Info "Clerk login uses http://127.0.0.1:8788/callback — keep that port free."
 }
 finally {

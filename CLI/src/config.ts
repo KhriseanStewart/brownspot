@@ -1,5 +1,6 @@
 import path from "node:path";
 import os from "node:os";
+import { PRODUCT } from "./product.ts";
 
 function intEnv(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -14,8 +15,16 @@ function boolEnv(name: string, fallback: boolean): boolean {
   return !["0", "false", "no", "off"].includes(raw.toLowerCase());
 }
 
+/** Treat missing or blank env as unset (Bun/.env often sets ""). */
+function envOr(name: string, fallback: string): string {
+  const raw = process.env[name];
+  if (raw == null) return fallback;
+  const v = raw.trim();
+  return v.length > 0 ? v : fallback;
+}
+
 export const WORKSPACE = path.resolve(process.env.AGENT_WORKSPACE ?? process.cwd());
-export const MODEL = process.env.AGENT_MODEL ?? "anthropic/claude-sonnet-5";
+export const MODEL = envOr("AGENT_MODEL", PRODUCT.defaultModel);
 export const API_KEY = process.env.AGENT_API_KEY;
 export const BASE_URL = process.env.AGENT_BASE_URL ?? "https://openrouter.ai/api/v1";
 export const MAX_STEPS = intEnv("AGENT_MAX_STEPS", 20);
@@ -55,11 +64,15 @@ export const DATABASE_URL =
  * Public Clerk defaults (safe to ship in the binary).
  * Override with env for local/dev. Never put AGENT_API_KEY defaults here.
  */
-export const CLERK_OAUTH_CLIENT_ID =
-  process.env.CLERK_OAUTH_CLIENT_ID ?? "ZUsZKrqXcirFkQqM";
+export const CLERK_OAUTH_CLIENT_ID = envOr(
+  "CLERK_OAUTH_CLIENT_ID",
+  PRODUCT.clerkOAuthClientId,
+);
 /** Production Frontend API (custom domain). */
-export const CLERK_FRONTEND_API =
-  process.env.CLERK_FRONTEND_API ?? "https://clerk.brownspot.terobytez.com";
+export const CLERK_FRONTEND_API = envOr(
+  "CLERK_FRONTEND_API",
+  PRODUCT.clerkFrontendApi,
+);
 export const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY;
 
 /** Require login for chat (Codex/Claude style). */
@@ -70,19 +83,20 @@ export const BROWNSPOT_DEV_BYPASS = boolEnv("BROWNSPOT_DEV_BYPASS", false);
 export const API_HOST = process.env.BROWNSPOT_API_HOST ?? "127.0.0.1";
 export const API_PORT = intEnv("BROWNSPOT_API_PORT", 8787);
 /** Fixed local port for Clerk PKCE callback (register exactly in Clerk). */
-export const OAUTH_CALLBACK_PORT = intEnv("BROWNSPOT_OAUTH_CALLBACK_PORT", 8788);
+export const OAUTH_CALLBACK_PORT = intEnv("BROWNSPOT_OAUTH_CALLBACK_PORT", PRODUCT.oauthCallbackPort);
 
 /**
  * Hosted BrownSpot API — after Clerk login, the CLI calls this with the
  * user access token. The server holds AGENT_API_KEY from your deploy .env.
  */
-export const BROWNSPOT_API_URL = (
-  process.env.BROWNSPOT_API_URL ?? "https://api.brownspot.terobytez.com"
+export const BROWNSPOT_API_URL = envOr(
+  "BROWNSPOT_API_URL",
+  PRODUCT.apiUrl,
 ).replace(/\/$/, "");
 
 /** True when this machine has a local OpenRouter key (dev / power users). */
 export function hasLocalLlmKey(): boolean {
-  return Boolean(API_KEY);
+  return Boolean(API_KEY && API_KEY.trim());
 }
 
 /** Prefer hosted API for end users (no local key). */
