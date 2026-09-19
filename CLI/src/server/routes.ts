@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import OpenAI from "openai";
 import { API_KEY, BASE_URL, MODEL } from "../config.ts";
+import { allowedProxyModels } from "../agent/model-prefs.ts";
 import { requireAuth } from "./auth-middleware.ts";
 import { getDb } from "../db/client.ts";
 
@@ -59,7 +60,8 @@ api.post("/v1/chat", async (c) => {
 /**
  * OpenAI-compatible completions proxy.
  * CLI (hosted mode) posts here with Clerk access token as Bearer.
- * Server injects your OpenRouter key from deploy .env and forces MODEL.
+ * Server injects your OpenRouter key from deploy .env.
+ * Client may pick a model within the opus/sonnet/cheap allowlist; else MODEL.
  */
 api.use("/v1/chat/completions", requireAuth);
 api.post("/v1/chat/completions", async (c) => {
@@ -76,9 +78,14 @@ api.post("/v1/chat/completions", async (c) => {
   }
 
   try {
+    const requested = typeof body.model === "string" ? body.model.trim() : "";
+    const allow = allowedProxyModels();
+    const model =
+      requested && allow.has(requested) ? requested : MODEL;
+
     const res = await upstream.chat.completions.create({
       messages,
-      model: MODEL,
+      model,
       tools: body.tools as OpenAI.Chat.ChatCompletionTool[] | undefined,
       tool_choice: body.tool_choice as OpenAI.Chat.ChatCompletionToolChoiceOption | undefined,
       temperature: typeof body.temperature === "number" ? body.temperature : undefined,

@@ -336,7 +336,6 @@ async function addLocal(messages: Array<{ role: string; content: string }>): Pro
       crypto.randomUUID(),
       getAgentUserId(),
       AGENT_AGENT_ID,
-  getAgentUserId(),
       fact,
       JSON.stringify(emb),
       new Date().toISOString(),

@@ -41,7 +41,10 @@ export async function runTurn(
   messages: ChatCompletionMessageParam[],
   rl: readline.Interface,
 ): Promise<void> {
-  const { client, model } = await resolveLlm();
+  const userText = lastUserText(messages);
+  const { client, model } = await resolveLlm(userText);
+
+  console.log(style.dim(`(model: ${model})`));
 
   let memNoteIndex = -1;
   if (isMem0Enabled()) {
@@ -119,6 +122,7 @@ export async function runTurn(
         content: typeof m.content === "string" ? m.content : "",
       }))
       .filter((m) => m.content);
-    await addMemoriesFromMessages(forMem);
+    // Fire-and-forget so the user never waits on Mem0 / local extract.
+    void addMemoriesFromMessages(forMem);
   }
 }
