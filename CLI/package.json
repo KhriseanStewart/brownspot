@@ -1,0 +1,29 @@
+{
+  "name": "brownspot",
+  "version": "0.0.1",
+  "type": "module",
+  "bin": {
+    "agent": "src/index.ts"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "start": "bun run src/index.ts",
+    "login": "bun run src/index.ts login",
+    "logout": "bun run src/index.ts logout",
+    "whoami": "bun run src/index.ts whoami",
+    "api": "bun run src/server/index.ts",
+    "db:migrate": "bun run src/db/migrate.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.13.8",
+    "mem0ai": "^3.2.0",
+    "openai": "^7.19.0",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "@types/node": "^26.6.2",
+    "typescript": "^7.0.2"
+  }
+}
