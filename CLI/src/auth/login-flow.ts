@@ -12,13 +12,20 @@ import { OAUTH_CALLBACK_PORT } from "../config.ts";
 import { upsertUser, recordAuthEvent } from "../db/users.ts";
 
 function openBrowser(url: string) {
-  const cmd =
-    process.platform === "darwin"
-      ? "open"
-      : process.platform === "win32"
-        ? "start"
-        : "xdg-open";
-  spawn(cmd, [url], { detached: true, stdio: "ignore" }).unref();
+  if (process.platform === "darwin") {
+    spawn("open", [url], { detached: true, stdio: "ignore" }).unref();
+    return;
+  }
+  if (process.platform === "win32") {
+    // `start` is a cmd builtin; empty title arg is required when the URL has special chars.
+    spawn("cmd", ["/c", "start", "", url], {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+    }).unref();
+    return;
+  }
+  spawn("xdg-open", [url], { detached: true, stdio: "ignore" }).unref();
 }
 
 /** Prefer Cursor/VS Code, then the terminal that launched us. */
@@ -72,12 +79,14 @@ function refocusIde() {
     return;
   }
   if (process.platform === "win32") {
-    // Best-effort: start Cursor if installed
-    spawn("cmd", ["/c", "start", "", "cursor:"], {
-      detached: true,
-      stdio: "ignore",
-      shell: true,
-    }).unref();
+    // Best-effort: foreground Cursor, then VS Code via custom URL schemes.
+    for (const scheme of ["cursor://", "vscode://"]) {
+      spawn("cmd", ["/c", "start", "", scheme], {
+        detached: true,
+        stdio: "ignore",
+        windowsHide: true,
+      }).unref();
+    }
   }
 }
 

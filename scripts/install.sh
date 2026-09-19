@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # BrownSpot installer — safe for: curl -fsSL <URL> | bash
+# On native Windows use scripts/install.ps1 instead (irm … | iex).
+# This bash script covers macOS, Linux, and WSL.
 set -euo pipefail
 
 REPO="KhriseanStewart/brownspot"

@@ -61,7 +61,10 @@ jobs:
             CLI/dist/dotstart-darwin-x64
             CLI/dist/dotstart-linux-x64
             CLI/dist/dotstart-linux-arm64
+            CLI/dist/dotstart-windows-x64.exe
+            CLI/dist/dotstart-windows-arm64.exe
             scripts/install.sh
+            scripts/install.ps1
           )
           for f in "${ASSETS[@]}"; do
             test -f "$f" || { echo "missing asset: $f"; exit 1; }
@@ -73,17 +76,21 @@ jobs:
             echo
             echo "Install:"
             echo
+            echo "### macOS / Linux"
+            echo
             echo '```bash'
             echo "curl -fsSL https://raw.githubusercontent.com/KhriseanStewart/brownspot/main/scripts/install.sh | bash"
             echo '```'
             echo
-            echo "Or pin a version:"
+            echo "### Windows (PowerShell)"
             echo
-            echo '```bash'
-            echo "BROWNSPOT_VERSION=${TAG#v} curl -fsSL https://raw.githubusercontent.com/KhriseanStewart/brownspot/main/scripts/install.sh | bash"
+            echo '```powershell'
+            echo "irm https://raw.githubusercontent.com/KhriseanStewart/brownspot/main/scripts/install.ps1 | iex"
             echo '```'
             echo
-            echo "Binaries: \`dotstart-darwin-arm64\`, \`dotstart-darwin-x64\`, \`dotstart-linux-x64\`, \`dotstart-linux-arm64\`."
+            echo "Pin a version with \`BROWNSPOT_VERSION=${TAG#v}\` (bash) or \`\$env:BROWNSPOT_VERSION='${TAG#v}'\` (PowerShell)."
+            echo
+            echo "Binaries: darwin/linux arm64+x64, windows-x64.exe, windows-arm64.exe."
           } > "$NOTES_FILE"
 
           if gh release view "$TAG" >/dev/null 2>&1; then

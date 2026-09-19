@@ -23,7 +23,7 @@ bun run db:migrate
 
 ## Auth (Clerk PKCE — Codex/Claude style)
 
-The CLI opens a browser, listens on `http://127.0.0.1:{random}/callback`, and stores tokens under `~/.brownspot/`. Chat is gated when `BROWNSPOT_AUTH_REQUIRED=true`.
+The CLI opens a browser, listens on `http://127.0.0.1:8788/callback`, and stores tokens under `~/.agent-cli/` (same on Windows via `%USERPROFILE%\.agent-cli`). Chat is gated when `BROWNSPOT_AUTH_REQUIRED=true`.
 
 ### 1) Clerk Dashboard
 
@@ -102,3 +102,14 @@ FIFO window + optional cheap-model summary of older turns (`src/agent/context.ts
 - Phase 2: optional `/index` project RAG
 - Phase 3: `/distill` patterns into Mem0 for new projects
 - Phase 4: hosted Mem0 / AWS for desktop/mobile sync
+
+## Windows
+
+Native Windows builds ship as `dotstart-windows-*.exe`. Install with PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/KhriseanStewart/brownspot/main/scripts/install.ps1 | iex
+```
+
+Clerk PKCE still uses `http://127.0.0.1:8788/callback`. Allow the Windows Firewall prompt for the local callback if asked.
+
