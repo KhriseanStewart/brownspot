@@ -12,6 +12,7 @@ import {
 } from "./memory/index.ts";
 import { firstLine, renderMarkdown, spinner, style } from "./style.ts";
 import { runTool, tools } from "./tools.ts";
+import { retrieveForTurn } from "./refs/retrieve.ts";
 
 export async function createInitialMessages(): Promise<ChatCompletionMessageParam[]> {
   const fileMemory = await loadFileMemory();
@@ -22,7 +23,7 @@ export async function createInitialMessages(): Promise<ChatCompletionMessagePara
       content:
         `You are a helpful general-purpose assistant running in a CLI. ` +
         `Your workspace is ${WORKSPACE}. Answer normal questions directly. ` +
-        `Only use file tools when the user asks you to inspect or change files. Be concise. For git/gh/ssh/docker/package ops prefer list_agent_commands then run_agent_command (catalog in Postgres; extensible). Use run_shell for one-off commands not in the catalog. ` +
+        `Only use file tools when the user asks you to inspect or change files. Be concise. For git/gh/ssh/docker/package ops prefer list_agent_commands then run_agent_command (catalog in Postgres; extensible). Use run_shell for one-off commands not in the catalog. Use list_reference_projects / search_reference_context for indexed reference and active project style context. ` +
         `Do not write AGENT_MEMORY.md unless the user explicitly asks — lasting preferences are stored by the memory system automatically.` +
         (fileMemory ? `\n\nPersistent file memory (AGENT_MEMORY.md):\n${fileMemory}` : ""),
     },
@@ -57,6 +58,15 @@ export async function runTurn(
         content: `Relevant memories for this user:\n${block}`,
       });
       memNoteIndex = messages.length - 1;
+    }
+  }
+
+  let refsNoteIndex = -1;
+  {
+    const { note } = await retrieveForTurn(userText);
+    if (note) {
+      messages.push({ role: "system", content: note });
+      refsNoteIndex = messages.length - 1;
     }
   }
 
@@ -105,6 +115,13 @@ export async function runTurn(
       }
     }
   } finally {
+    if (refsNoteIndex >= 0 && messages[refsNoteIndex]?.role === "system") {
+      const c = messages[refsNoteIndex].content;
+      if (typeof c === "string" && c.startsWith("Reference / active project context")) {
+        messages.splice(refsNoteIndex, 1);
+        if (memNoteIndex > refsNoteIndex) memNoteIndex -= 1;
+      }
+    }
     if (memNoteIndex >= 0 && messages[memNoteIndex]?.role === "system") {
       const c = messages[memNoteIndex].content;
       if (typeof c === "string" && c.startsWith("Relevant memories for this user:")) {
