@@ -51,9 +51,11 @@ resolve_version() {
 download() {
   local url="$1" dest="$2"
   if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$url" -o "$dest"
+    # -f fail on HTTP errors, -L follow redirects, -# progress to stderr (visible under curl|bash)
+    # Avoid -s so large binaries do not look "stuck".
+    curl -fL --progress-bar "$url" -o "$dest"
   elif command -v wget >/dev/null 2>&1; then
-    wget -qO "$dest" "$url"
+    wget -O "$dest" "$url"
   else
     err "need curl or wget to download"
   fi
@@ -74,6 +76,7 @@ main() {
   url="${GITHUB_DOWNLOAD}/${REPO}/releases/download/${tag}/${asset}"
 
   info "installing ${BIN_NAME} ${tag} (${target})"
+  info "downloading ${url} (this can take a minute — binary is large)"
   mkdir -p "$INSTALL_DIR"
 
   tmp="$(mktemp "${TMPDIR:-/tmp}/${asset}.XXXXXX")"
