@@ -209,9 +209,11 @@ export async function runRefsStartup(
     console.log(style.dim("refs · refreshing active project index…"));
     await maybeReingestActive(clerkUserId, WORKSPACE);
   } catch (e) {
+    const msg = (e instanceof Error ? e.message : String(e)).trim() || "database unavailable";
+    console.log(style.dim(`refs · skipped (${msg})`));
     console.log(
       style.dim(
-        `refs · skipped (${e instanceof Error ? e.message : String(e)})`,
+        "  Set DATABASE_URL in the host .env for project indexing, or /refs later.",
       ),
     );
   }

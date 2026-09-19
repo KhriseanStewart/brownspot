@@ -3,6 +3,7 @@ import type * as readline from "node:readline/promises";
 import { MAX_STEPS, WORKSPACE } from "../config.ts";
 import { compactMessages, truncateToolResult } from "./context.ts";
 import { resolveLlm } from "./llm.ts";
+import { MODEL_IDS } from "./model-prefs.ts";
 import {
   addMemoriesFromMessages,
   formatHitsForPrompt,
@@ -70,20 +71,55 @@ export async function runTurn(
     }
   }
 
+  let activeModel = model;
   try {
     for (let step = 0; step < MAX_STEPS; step++) {
       await compactMessages(client, messages);
+
+      // Cheap flash is fine for hello; after any tool use, stay on sonnet.
+      const usedTools = messages.some(
+        (m) =>
+          m.role === "tool" ||
+          (m.role === "assistant" &&
+            Array.isArray((m as { tool_calls?: unknown }).tool_calls) &&
+            ((m as { tool_calls?: unknown[] }).tool_calls?.length ?? 0) > 0),
+      );
+      if (usedTools && activeModel === MODEL_IDS.cheap) {
+        activeModel = MODEL_IDS.sonnet;
+        console.log(style.dim(`(model: ${activeModel} · escalated after tools)`));
+      }
 
       const spin = spinner("thinking…");
       let res;
       try {
         res = await client.chat.completions.create({
-          model,
+          model: activeModel,
           messages,
           tools,
         });
-      } finally {
+      } catch (err) {
         spin.stop();
+        const e = err as { status?: number; message?: string; error?: { message?: string } };
+        const detail =
+          e.error?.message || e.message || (err instanceof Error ? err.message : String(err));
+        console.log(
+          style.red(
+            `LLM error${e.status ? ` ${e.status}` : ""}: ${detail}`,
+          ),
+        );
+        console.log(
+          style.dim(
+            "Tip: /model sonnet  · check OpenRouter credits  · or retry the ask",
+          ),
+        );
+        break;
+      } finally {
+        // spinner may already be stopped in catch
+        try {
+          spin.stop();
+        } catch {
+          /* ignore */
+        }
       }
       const msg = res.choices[0]?.message;
       if (!msg) {

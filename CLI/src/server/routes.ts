@@ -94,14 +94,22 @@ api.post("/v1/chat/completions", async (c) => {
     });
     return c.json(res);
   } catch (e) {
-    const err = e as { status?: number; message?: string };
+    const err = e as {
+      status?: number;
+      message?: string;
+      error?: { message?: string; metadata?: unknown };
+    };
     const raw = typeof err.status === "number" ? err.status : 502;
     const status = (raw >= 400 && raw < 600 ? raw : 502) as ContentfulStatusCode;
+    const message =
+      err.error?.message || err.message || "Upstream LLM request failed";
+    console.error(`[proxy] LLM ${status}: ${message}`);
     return c.json(
       {
         error: {
-          message: err.message ?? "Upstream LLM request failed",
+          message,
           type: "brownspot_proxy_error",
+          model: typeof body.model === "string" ? body.model : MODEL,
         },
       },
       status,

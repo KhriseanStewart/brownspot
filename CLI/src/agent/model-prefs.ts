@@ -79,11 +79,11 @@ function pickAutoModel(userText: string): string {
     ) || t.length > 1200;
   if (hard) return MODEL_IDS.opus;
 
-  // Coding / file / tool work stays on sonnet.
+  // Coding / UI / file / tool work stays on sonnet (not cheap flash).
   const coding =
-    /\b(code|coding|implement|fix|bug|debug|typescript|javascript|python|rust|sql|api|function|class|component|pr\b|git\b|commit|deploy|test|lint|typecheck|file|folder|repo|server|endpoint|docker|bun|npm)\b/.test(
+    /\b(code|coding|implement|fix|bug|debug|typescript|javascript|python|rust|sql|api|function|class|component|pr\b|git\b|commit|deploy|test|lint|typecheck|file|folder|repo|server|endpoint|docker|bun|npm|flutter|dart|widget|layout|screen|scaffold|material|cupertino|auth|login|navigate|navigation|route|router|placeholder|ui|ux|expo|react|nestjs?|mobile|android|ios)\b/.test(
       t,
-    ) || t.length > 400;
+    ) || t.length > 280;
   if (coding) return MODEL_IDS.sonnet;
 
   // Everything else (greetings, small talk, short Q&A) → cheapest model.
