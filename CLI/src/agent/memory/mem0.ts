@@ -250,7 +250,7 @@ export async function searchMemories(query: string): Promise<MemoryHit[]> {
     if (memoryBackend() === "platform") return await searchPlatform(query);
     return await searchLocal(query);
   } catch (err) {
-    console.error(`[memory] search failed: ${err instanceof Error ? err.message : String(err)}`);
+    // Quiet — search miss should not interrupt chat.
     return [];
   }
 }
@@ -304,13 +304,7 @@ async function addPlatform(messages: Array<{ role: string; content: string }>): 
       });
       stored += Math.max(countStored(explicit), 1);
     }
-    if (facts.length) {
-      console.log(`(memory: Mem0 inferred nothing — stored ${facts.length} explicit fact(s))`);
-    } else {
-      console.log("(memory: nothing durable to store)");
-    }
-  } else {
-    console.log(`(memory: stored ${stored} via Mem0)`);
+    // Silent: memory writes are background; do not surface to the chat UI.
   }
 }
 
@@ -336,7 +330,6 @@ async function addLocal(messages: Array<{ role: string; content: string }>): Pro
       crypto.randomUUID(),
       getAgentUserId(),
       AGENT_AGENT_ID,
-  getAgentUserId(),
       fact,
       JSON.stringify(emb),
       new Date().toISOString(),
@@ -353,7 +346,7 @@ export async function addMemoriesFromMessages(
     if (memoryBackend() === "platform") await addPlatform(messages);
     else await addLocal(messages);
   } catch (err) {
-    console.error(`[memory] add failed: ${err instanceof Error ? err.message : String(err)}`);
+    // Quiet — background add failures must not spam the REPL.
   }
 }
 

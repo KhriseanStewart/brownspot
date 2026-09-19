@@ -6,7 +6,6 @@ import {
   AGENT_ROLE,
   BROWNSPOT_API_URL,
   getAgentUserId,
-  MODEL,
   WORKSPACE,
   requireConfig,
   useHostedLlm,
@@ -29,6 +28,7 @@ import { cmdLogin } from "./cli/commands/login.ts";
 import { cmdLogout } from "./cli/commands/logout.ts";
 import { cmdWhoami, printWhoami } from "./cli/commands/whoami.ts";
 import { cmdUpdate } from "./cli/commands/update.ts";
+import { handleModelCommand, modelLabelForBanner } from "./agent/model-prefs.ts";
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -75,16 +75,16 @@ async function main() {
   const rl = readline.createInterface({ input, output });
   const messages = await createInitialMessages();
 
-  printBanner(WORKSPACE, MODEL);
+  printBanner(WORKSPACE, modelLabelForBanner());
   if (isMem0Enabled()) {
     console.log(
       style.dim(
-        `memory on · ${memoryBackend()} · user ${getAgentUserId()}${AGENT_AGENT_ID ? ` · agent ${AGENT_AGENT_ID}` : ` · role ${AGENT_ROLE}`} · /memory help · /whoami · /update\n`,
+        `memory on · ${memoryBackend()} · user ${getAgentUserId()}${AGENT_AGENT_ID ? ` · agent ${AGENT_AGENT_ID}` : ` · role ${AGENT_ROLE}`} · /model · /memory help · /whoami · /update\n`,
       ),
     );
   } else {
     console.log(
-      style.dim(`memory off · /memory help · /whoami · /update\n`),
+      style.dim(`memory off · /model · /memory help · /whoami · /update\n`),
     );
   }
 
@@ -122,6 +122,7 @@ async function main() {
       }
       continue;
     }
+    if (handleModelCommand(line)) continue;
     if (await handleMemoryCommand(line)) continue;
 
     messages.push({ role: "user", content: line });
