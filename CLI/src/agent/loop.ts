@@ -57,7 +57,6 @@ export async function runTurn(
         content: `Relevant memories for this user:\n${block}`,
       });
       memNoteIndex = messages.length - 1;
-      console.log(style.dim(`(memory: ${hits.length} memories)`));
     }
   }
 
