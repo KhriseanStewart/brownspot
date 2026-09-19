@@ -14,8 +14,9 @@ import { addMemoriesFromMessages, isMem0Enabled } from "../memory/mem0.ts";
 import { contentHash, combineHashes } from "./hash.ts";
 import {
   assertSafeProjectPath,
-  isLikelyBinaryPath,
+  KEEP_SOURCE_EXT,
   shouldSkipName,
+  shouldSkipRelPath,
 } from "./ignore.ts";
 import { embedChunkIfEnabled } from "./embed.ts";
 import {
@@ -94,7 +95,9 @@ async function walkProject(
         continue;
       }
       if (!ent.isFile()) continue;
-      if (isLikelyBinaryPath(abs)) continue;
+
+      const rel = path.relative(root, abs).split(path.sep).join("/");
+      if (shouldSkipRelPath(rel)) continue;
 
       let st;
       try {
@@ -115,15 +118,12 @@ async function walkProject(
       if (text.includes("\u0000")) continue;
 
       fileCount++;
-      const rel = path.relative(root, abs).split(path.sep).join("/");
       const { kind, highValue } = classifyPath(rel);
       const hash = contentHash(text);
       hashParts.push(`${rel}:${hash}`);
 
-      // Prefer high-value; also keep a thin sample of other source files
-      const keep =
-        highValue ||
-        /\.(ts|tsx|js|jsx|py|rs|go|java|kt|swift|rb|php|cs)$/i.test(rel);
+      // Prefer high-value; thin sample of source only (no assets/locks/noise)
+      const keep = highValue || KEEP_SOURCE_EXT.test(rel);
       if (!keep) continue;
 
       const maxContent = highValue ? 8000 : 2500;

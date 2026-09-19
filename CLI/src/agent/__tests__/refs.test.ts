@@ -6,6 +6,7 @@ import {
   isLikelyBinaryPath,
   resolveUnderRoot,
   shouldSkipName,
+  shouldSkipRelPath,
 } from "../refs/ignore.ts";
 import { buildFtsQuery, packChunks } from "../refs/search.ts";
 import { canAddReference, slugify } from "../refs/store.ts";
@@ -52,6 +53,27 @@ describe("refs ignore + path safety", () => {
     expect(abs).toBe("/tmp/my-app");
   });
 });
+
+  test("shouldSkipRelPath filters locks expo android ios noise", () => {
+    expect(shouldSkipRelPath("package-lock.json")).toBe(true);
+    expect(shouldSkipRelPath("yarn.lock")).toBe(true);
+    expect(shouldSkipRelPath("bun.lockb")).toBe(true);
+    expect(shouldSkipRelPath(".expo/settings.json")).toBe(true);
+    expect(shouldSkipRelPath("android/app/build/outputs/apk/debug/app.apk")).toBe(true);
+    expect(shouldSkipRelPath("ios/Pods/SomePod/Pod.m")).toBe(true);
+    expect(shouldSkipRelPath("assets/icon.png")).toBe(true);
+    expect(shouldSkipRelPath("dist/bundle.min.js")).toBe(true);
+    expect(shouldSkipRelPath("package.json")).toBe(false);
+    expect(shouldSkipRelPath("app/_layout.tsx")).toBe(false);
+    expect(shouldSkipRelPath("README.md")).toBe(false);
+  });
+
+  test("shouldSkipName covers expo/gradle caches", () => {
+    expect(shouldSkipName(".expo")).toBe(true);
+    expect(shouldSkipName("Pods")).toBe(true);
+    expect(shouldSkipName(".gradle")).toBe(true);
+    expect(shouldSkipName("package-lock.json")).toBe(true);
+  });
 
 describe("refs hashing", () => {
   test("contentHash is stable sha256 hex", () => {
