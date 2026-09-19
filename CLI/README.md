@@ -2,7 +2,21 @@
 
 Terminal AI agent (Bun + TypeScript) with OpenRouter chat, file tools, token-saving context, Mem0 personal memory, Clerk login, and a small Hono API.
 
-## Setup
+## Install (curl)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/KhriseanStewart/brownspot/main/scripts/install.sh | bash
+```
+
+Installs the `dotstart` binary to `~/.local/bin`. Then:
+
+```bash
+dotstart
+```
+
+Optional: `BROWNSPOT_VERSION=0.0.1` to pin a release. Alias `agent` remains available when installing from source via `bun link`.
+
+## Setup (Bun development)
 
 ```bash
 bun install
