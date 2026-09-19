@@ -99,7 +99,7 @@ FIFO window + optional cheap-model summary of older turns (`src/agent/context.ts
 
 ## Roadmap
 
-- Phase 2: optional `/index` project RAG
+- Phase 2: ~~optional `/index` project RAG~~ → `/refs` (FTS default; see section above)
 - Phase 3: `/distill` patterns into Mem0 for new projects
 - Phase 4: hosted Mem0 / AWS for desktop/mobile sync
 
@@ -112,6 +112,30 @@ irm https://raw.githubusercontent.com/KhriseanStewart/brownspot/main/scripts/ins
 ```
 
 Clerk PKCE still uses `http://127.0.0.1:8788/callback`. Allow the Windows Firewall prompt for the local callback if asked.
+
+
+## Reference + active project RAG
+
+Index the **active** workspace (cwd) and up to `BROWNSPOT_MAX_REFS` (default 3) **reference** projects as style/structure teachers. Same Postgres store; `project_role` is `active` | `reference`.
+
+- **Default retrieval:** Postgres FTS (`tsvector` + GIN). Free/cheap.
+- **Embeddings:** optional, off by default (`BROWNSPOT_REF_EMBEDDINGS=false`). When on, only high-value chunks (profile, README, pkg, configs, docs) are embedded via a cheap OpenRouter model and stored as `REAL[]`.
+- **Budget:** ~3800 chars injected per coding turn; incremental reindex via content hash.
+- **Events:** `project_events` records `added` / `ingested` / `reindexed` / `removed` / `activated` (see `/refs status`).
+
+```bash
+# After login, optionally paste 0–3 reference paths (Enter to skip).
+# Or anytime in chat:
+/refs                  # list
+/refs add ~/code/good-app
+/refs remove good-app
+/refs reindex          # or /refs reindex <slug>
+/refs status           # added vs last ingested
+
+bun run db:migrate     # applies schema including RAG tables
+```
+
+Tools: `list_reference_projects`, `search_reference_context`. Local cache: `~/.agent-cli/refs.json`.
 
 ## Agent command catalog (Postgres)
 

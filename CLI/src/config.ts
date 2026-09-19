@@ -104,6 +104,20 @@ export function useHostedLlm(): boolean {
   return !hasLocalLlmKey();
 }
 
+
+/** Reference / active project RAG */
+export const BROWNSPOT_MAX_REFS = intEnv("BROWNSPOT_MAX_REFS", 3);
+/** Optional embeddings — OFF by default (FTS is free/cheap). */
+export const BROWNSPOT_REF_EMBEDDINGS = boolEnv("BROWNSPOT_REF_EMBEDDINGS", false);
+/** Cheapest OpenRouter embedding model when embeddings are enabled. */
+export const REF_EMBED_MODEL =
+  process.env.BROWNSPOT_REF_EMBED_MODEL ?? "openai/text-embedding-3-small";
+export const REF_CONTEXT_BUDGET = intEnv("BROWNSPOT_REF_CONTEXT_BUDGET", 3800);
+export const REF_SEARCH_LIMIT = intEnv("BROWNSPOT_REF_SEARCH_LIMIT", 8);
+export const REF_MAX_DEPTH = intEnv("BROWNSPOT_REF_MAX_DEPTH", 6);
+export const REF_MAX_FILES = intEnv("BROWNSPOT_REF_MAX_FILES", 800);
+export const REF_MAX_FILE_BYTES = intEnv("BROWNSPOT_REF_MAX_FILE_BYTES", 120_000);
+
 export function requireConfig(): void {
   // Hosted mode: Clerk login + BROWNSPOT_API_URL — no local AGENT_API_KEY.
   if (useHostedLlm()) {

@@ -2,10 +2,14 @@ import type { ChatCompletionTool } from "openai/resources/chat/completions";
 import * as fs from "node:fs/promises";
 import path from "node:path";
 import type * as readline from "node:readline/promises";
-import { WORKSPACE } from "../config.ts";
+import { getAgentUserId, WORKSPACE } from "../config.ts";
 import { runShellFiltered } from "./snip.ts";
 import { style } from "./style.ts";
 import { formatCommandCatalog, runCatalogCommand } from "./command-runner.ts";
+import {
+  listProjectsForTool,
+  searchContextForTool,
+} from "./refs/retrieve.ts";
 
 /** Keep every path inside the workspace. Does not resolve symlinks yet. */
 export function resolveSafe(p: string): string {
@@ -126,6 +130,34 @@ export const tools: ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "list_reference_projects",
+      description:
+        "List indexed reference (style teachers) and active (cwd) projects in the RAG store.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_reference_context",
+      description:
+        "Full-text search over indexed project chunks (active + reference). Use for style/structure examples.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Search query (keywords or short phrase).",
+          },
+        },
+        required: ["query"],
+      },
+    },
+  },
+
 ];
 
 async function approve(rl: readline.Interface, action: string): Promise<boolean> {
@@ -191,6 +223,10 @@ export async function runTool(
           category: args.category,
           q: args.q,
         });
+      case "list_reference_projects":
+        return await listProjectsForTool(getAgentUserId());
+      case "search_reference_context":
+        return await searchContextForTool(getAgentUserId(), args.query ?? "");
       case "run_agent_command":
         return await runCatalogCommand(args.slug ?? "", args.params ?? "{}", rl);
       default:

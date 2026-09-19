@@ -31,6 +31,7 @@ import { cmdUpdate } from "./cli/commands/update.ts";
 import { handleModelCommand, modelLabelForBanner } from "./agent/model-prefs.ts";
 import { handleTokensCommand } from "./agent/tokens-command.ts";
 import { isSnipAvailable, snipVersion } from "./agent/snip.ts";
+import { handleRefsCommand, runRefsStartup } from "./agent/refs/index.ts";
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -80,18 +81,22 @@ async function main() {
   if (isMem0Enabled()) ensureReady();
 
   const rl = readline.createInterface({ input, output });
+
+  // Optional refs (0–3) + eager active-project reindex
+  await runRefsStartup(rl, session.userId);
+
   const messages = await createInitialMessages();
 
   printBanner(WORKSPACE, modelLabelForBanner());
   if (isMem0Enabled()) {
     console.log(
       style.dim(
-        `memory on · ${memoryBackend()} · user ${getAgentUserId()}${AGENT_AGENT_ID ? ` · agent ${AGENT_AGENT_ID}` : ` · role ${AGENT_ROLE}`} · /model · /tokens · /memory help · /whoami · /update\n`,
+        `memory on · ${memoryBackend()} · user ${getAgentUserId()}${AGENT_AGENT_ID ? ` · agent ${AGENT_AGENT_ID}` : ` · role ${AGENT_ROLE}`} · /model · /tokens · /refs · /memory help · /whoami · /update\n`,
       ),
     );
   } else {
     console.log(
-      style.dim(`memory off · /model · /tokens · /memory help · /whoami · /update\n`),
+      style.dim(`memory off · /model · /tokens · /refs · /memory help · /whoami · /update\n`),
     );
   }
 
@@ -132,6 +137,7 @@ async function main() {
     if (handleModelCommand(line)) continue;
     if (handleTokensCommand(line)) continue;
     if (await handleMemoryCommand(line)) continue;
+    if (await handleRefsCommand(line, session.userId)) continue;
 
     messages.push({ role: "user", content: line });
     await runTurn(messages, rl);
