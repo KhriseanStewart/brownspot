@@ -30,11 +30,11 @@ curl -fsSL https://raw.githubusercontent.com/KhriseanStewart/brownspot/main/scri
 Pin a version:
 
 ```bash
-BROWNSPOT_VERSION=0.0.3 curl -fsSL https://raw.githubusercontent.com/KhriseanStewart/brownspot/main/scripts/install.sh | bash
+BROWNSPOT_VERSION=0.0.6 curl -fsSL https://raw.githubusercontent.com/KhriseanStewart/brownspot/main/scripts/install.sh | bash
 ```
 
 ```powershell
-$env:BROWNSPOT_VERSION = "0.0.3"
+$env:BROWNSPOT_VERSION = "0.0.6"
 irm https://raw.githubusercontent.com/KhriseanStewart/brownspot/main/scripts/install.ps1 | iex
 ```
 
@@ -49,7 +49,7 @@ dotstart
 ## After install (other people's devices)
 
 1. `dotstart` → Clerk login (Google / email)
-2. Chat uses **your** OpenRouter key via the hosted API (`https://api.brownspot.terobytez.com`) — users never set `AGENT_API_KEY`
+2. Chat uses **your** OpenRouter key via the hosted API (`https://brownspot-api.terobytez.com`) — users never set `AGENT_API_KEY`
 3. Update anytime:
 
 ```bash
@@ -58,7 +58,7 @@ dotstart update
 
 ### Deploy the API (you — once)
 
-Point DNS `api.brownspot.terobytez.com` at your host, put your `.env` there (with `AGENT_API_KEY`, `AGENT_MODEL`, Clerk secret), then:
+Point DNS `brownspot-api.terobytez.com` at your host, put your `.env` there (with `AGENT_API_KEY`, `AGENT_MODEL`, Clerk secret), then:
 
 ```bash
 cd CLI && bun install && bun run api

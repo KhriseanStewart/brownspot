@@ -7,7 +7,7 @@ export const PRODUCT = {
   bin: "dotstart",
   clerkOAuthClientId: "ZUsZKrqXcirFkQqM",
   clerkFrontendApi: "https://clerk.brownspot.terobytez.com",
-  apiUrl: "https://api.brownspot.terobytez.com",
+  apiUrl: "https://brownspot-api.terobytez.com",
   defaultModel: "anthropic/claude-sonnet-5",
   oauthCallbackPort: 8788,
   githubRepo: "KhriseanStewart/brownspot",
