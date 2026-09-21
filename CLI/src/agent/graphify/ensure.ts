@@ -15,7 +15,7 @@ import {
   graphifyStateDir,
   watchPidPath,
 } from "./paths.ts";
-import { runGraphify, spawnGraphifyDetached } from "./run.ts";
+import { runGraphify, spawnGraphifyDetached, watchLogPath } from "./run.ts";
 
 export function isGraphifyEnabled(): boolean {
   return GRAPHIFY_ENABLED;
@@ -42,7 +42,7 @@ export function graphifyStatus(root = WORKSPACE): string {
   return [
     `graphify · ${bin ? graphifyVersion() ?? "ready" : "NOT INSTALLED"}`,
     `graph · ${hasGraph ? graph : "missing"} (${nodes} nodes)`,
-    `watch · ${watching ? "running" : "stopped"}`,
+    `watch · ${watching ? "running" : "stopped — run /graphify watch"}`,
     `code-only · ${GRAPHIFY_CODE_ONLY ? "yes" : "no"}`,
   ].join("\n");
 }
@@ -108,7 +108,7 @@ export function ensureGraph(root = WORKSPACE): {
   };
 }
 
-/** Start background watch if not already running. */
+/** Start background watch if not already running. Verifies it stays alive. */
 export function ensureWatch(root = WORKSPACE): { ok: boolean; message: string } {
   if (!GRAPHIFY_ENABLED || !GRAPHIFY_WATCH) {
     return { ok: false, message: "watch disabled" };
@@ -123,7 +123,34 @@ export function ensureWatch(root = WORKSPACE): { ok: boolean; message: string } 
   if (!pid) return { ok: false, message: "failed to spawn watch" };
   fs.mkdirSync(path.dirname(watchPidPath(root)), { recursive: true });
   fs.writeFileSync(watchPidPath(root), String(pid), "utf8");
-  return { ok: true, message: `watch started · pid ${pid}` };
+
+  // graphify exits immediately if watchdog is missing — detect that
+  Bun.sleepSync(1200);
+  try {
+    process.kill(pid, 0);
+    return { ok: true, message: `watch started · pid ${pid}` };
+  } catch {
+    try {
+      fs.unlinkSync(watchPidPath(root));
+    } catch {
+      /* ignore */
+    }
+    let tip = "";
+    try {
+      const log = fs.readFileSync(watchLogPath(), "utf8");
+      const tail = log.trim().split("\n").slice(-6).join(" ");
+      tip = tail ? ` · ${tail.slice(0, 180)}` : "";
+      if (/watchdog/i.test(log)) {
+        tip += ' · fix: uv tool install \'graphifyy[watch]\'';
+      }
+    } catch {
+      /* ignore */
+    }
+    return {
+      ok: false,
+      message: `watch exited right away (pid ${pid})${tip}`,
+    };
+  }
 }
 
 export function stopWatch(root = WORKSPACE): void {
@@ -159,7 +186,20 @@ export async function runGraphifyStartup(): Promise<void> {
   console.log(style.dim(`graphify · ${graphifyVersion() ?? "ready"} · indexing ${WORKSPACE}…`));
   const built = ensureGraph(WORKSPACE);
   if (built.ok) {
-    console.log(style.dim(`graphify · ${built.message.slice(0, 160)}`));
+    // Prefer a short status line over raw CLI noise (paths get truncated otherwise)
+    const lines = built.message
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const useful =
+      lines.find((l) => /\d+\s+nodes/i.test(l)) ||
+      lines.filter((l) => !l.includes("warning:")).slice(-1)[0] ||
+      "graph ready";
+    for (const wline of lines.filter((l) => /warning:/i.test(l)).slice(0, 2)) {
+      console.log(style.dim(`  ${wline.slice(0, 200)}`));
+    }
+    console.log(style.dim(`graphify · ${useful.slice(0, 180)}`));
+    console.log(style.dim(graphifyStatus(WORKSPACE).split("\n").slice(0, 3).join(" · ")));
   } else {
     console.log(style.yellow(`graphify · ${built.message.slice(0, 200)}`));
   }

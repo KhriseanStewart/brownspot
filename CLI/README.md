@@ -155,7 +155,7 @@ BrownSpot keeps a **Graphify** AST knowledge graph for the current workspace and
 ```bash
 # one-time host install of the Graphify CLI
 curl -LsSf https://astral.sh/uv/install.sh | sh
-uv tool install graphifyy
+uv tool install 'graphifyy[watch,sql]'
 ```
 
 On `dotstart` start: builds/updates `graphify-out/graph.json` (code-only, no OpenRouter) and starts `graphify watch`. Agent tools: `graph_query`, `graph_path`, `graph_explain`, `graph_god_nodes`, `graph_affected`. Slash: `/graphify …`.

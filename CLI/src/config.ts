@@ -143,7 +143,7 @@ export const GRAPHIFY_CODE_ONLY = boolEnv("BROWNSPOT_GRAPHIFY_CODE_ONLY", true);
 /** Background watch while CLI session is alive. */
 export const GRAPHIFY_WATCH = boolEnv("BROWNSPOT_GRAPHIFY_WATCH", true);
 /** Token budget for auto-injected graph query results. */
-export const GRAPHIFY_QUERY_BUDGET = intEnv("BROWNSPOT_GRAPHIFY_QUERY_BUDGET", 1600);
+export const GRAPHIFY_QUERY_BUDGET = intEnv("BROWNSPOT_GRAPHIFY_QUERY_BUDGET", 2800);
 
 
 export function requireConfig(): void {

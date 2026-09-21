@@ -1,5 +1,8 @@
 import { execFileSync, spawn } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 import { resolveGraphifyBin } from "./bin.ts";
+import { graphifyStateDir } from "./paths.ts";
 
 export type RunResult = { ok: boolean; stdout: string; stderr: string; status: number | null };
 
@@ -25,7 +28,7 @@ export function runGraphify(
       maxBuffer: 8_000_000,
       env: {
         ...process.env,
-        PATH: `${bin.includes("/") ? bin.slice(0, bin.lastIndexOf("/")) : ""}:${process.env.PATH ?? ""}`,
+        PATH: `${path.dirname(bin)}:${process.env.PATH ?? ""}`,
       },
     });
     return { ok: true, stdout: stdout ?? "", stderr: "", status: 0 };
@@ -45,18 +48,32 @@ export function runGraphify(
   }
 }
 
-/** Spawn detached background process; returns PID. */
+export function watchLogPath(): string {
+  return path.join(graphifyStateDir(), "watch.log");
+}
+
+/**
+ * Spawn detached graphify with stdout/stderr logged.
+ * Returns PID, or null on failure.
+ */
 export function spawnGraphifyDetached(
   args: string[],
   opts?: { cwd?: string },
 ): number | null {
   const bin = resolveGraphifyBin();
   if (!bin) return null;
+  fs.mkdirSync(graphifyStateDir(), { recursive: true });
+  const logFile = watchLogPath();
+  const out = fs.openSync(logFile, "a");
+  fs.writeSync(out, `\n--- ${new Date().toISOString()} graphify ${args.join(" ")} ---\n`);
   const child = spawn(bin, args, {
     cwd: opts?.cwd,
     detached: true,
-    stdio: "ignore",
-    env: process.env,
+    stdio: ["ignore", out, out],
+    env: {
+      ...process.env,
+      PATH: `${path.dirname(bin)}:${process.env.PATH ?? ""}`,
+    },
   });
   child.unref();
   return child.pid ?? null;
