@@ -150,12 +150,19 @@ export async function runTurn(
 
       for (const call of msg.tool_calls) {
         if (call.type !== "function") continue;
-        const args = JSON.parse(call.function.arguments || "{}");
-        const argStr = JSON.stringify(args).slice(0, 120);
+        const args = JSON.parse(call.function.arguments || "{}") as Record<string, string>;
+        const argStr =
+          call.function.name === "write_file"
+            ? JSON.stringify({
+                path: args.path,
+                content: `[${(args.content ?? "").length} chars]`,
+              })
+            : JSON.stringify(args).slice(0, 120);
         console.log(
           `\n${style.dim("→")} ${style.yellow(call.function.name)}${style.dim(`(${argStr})`)}`,
         );
         const result = truncateToolResult(await runTool(call.function.name, args, rl));
+        // write_file already printed a full review diff before approve
         console.log(style.dim(`  ↳ ${firstLine(result)}`));
         messages.push({ role: "tool", tool_call_id: call.id, content: result });
       }

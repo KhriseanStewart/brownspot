@@ -148,6 +148,10 @@ bun run db:seed-commands   # safe to re-run; upserts by slug
 
 Add more later with another seed row or `INSERT`/`ON CONFLICT` against `agent_commands`. Ad-hoc commands still use `run_shell`.
 
+## Edit review (Cursor-style diffs)
+
+When the agent calls `write_file`, BrownSpot prints a **colored unified diff** (red removals / green additions) and asks you to approve with `y` before applying — so you can review the change from → to like Cursor.
+
 ## Graphify + memory (always on)
 
 BrownSpot keeps a **Graphify** AST knowledge graph for the current workspace and turns **memory on by default** (local SQLite, or Mem0 Platform if `MEM0_API_KEY` is set).

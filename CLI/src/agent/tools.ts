@@ -5,6 +5,7 @@ import type * as readline from "node:readline/promises";
 import { getAgentUserId, WORKSPACE } from "../config.ts";
 import { runShellFiltered } from "./snip.ts";
 import { style } from "./style.ts";
+import { formatUnifiedDiff, printReviewDiff } from "./diff.ts";
 import { formatCommandCatalog, runCatalogCommand } from "./command-runner.ts";
 import {
   graphAffected,
@@ -58,7 +59,7 @@ export const tools: ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "write_file",
-      description: "Create or overwrite a file with the given content.",
+      description: "Create or overwrite a file. The CLI shows the user a before/after unified diff to review before applying.",
       parameters: {
         type: "object",
         properties: { path: { type: "string" }, content: { type: "string" } },
@@ -270,12 +271,33 @@ export async function runTool(
       }
       case "write_file": {
         const abs = resolveSafe(args.path);
-        if (!(await approve(rl, `write ${args.path} (${args.content.length} chars)`))) {
+        const after = args.content ?? "";
+        let before = "";
+        let created = true;
+        try {
+          before = await fs.readFile(abs, "utf8");
+          created = false;
+        } catch {
+          /* new file */
+        }
+        const stats = printReviewDiff({
+          path: args.path,
+          before,
+          after,
+          created,
+        });
+        if (
+          !(await approve(
+            rl,
+            `${created ? "create" : "edit"} ${args.path} (${stats.summary})`,
+          ))
+        ) {
           return "User denied this action.";
         }
         await fs.mkdir(path.dirname(abs), { recursive: true });
-        await fs.writeFile(abs, args.content, "utf8");
-        return `Wrote ${args.path}`;
+        await fs.writeFile(abs, after, "utf8");
+        const diff = formatUnifiedDiff(args.path, before, after);
+        return `Applied ${created ? "create" : "edit"} ${args.path} (${stats.summary})\n\n${diff}`;
       }
       case "delete_file": {
         const abs = resolveSafe(args.path);
