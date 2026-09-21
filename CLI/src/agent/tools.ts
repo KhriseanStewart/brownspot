@@ -7,6 +7,15 @@ import { runShellFiltered } from "./snip.ts";
 import { style } from "./style.ts";
 import { formatCommandCatalog, runCatalogCommand } from "./command-runner.ts";
 import {
+  graphAffected,
+  graphExplain,
+  graphGodNodes,
+  graphPath,
+  graphQuery,
+  isGraphifyEnabled,
+} from "./graphify/index.ts";
+import { noteFileRead, readGuardHint } from "./graphify/read-guard.ts";
+import {
   listProjectsForTool,
   searchContextForTool,
 } from "./refs/retrieve.ts";
@@ -158,6 +167,75 @@ export const tools: ChatCompletionTool[] = [
     },
   },
 
+  {
+    type: "function",
+    function: {
+      name: "graph_query",
+      description:
+        "Query the Graphify knowledge graph for this workspace (AST structure). Prefer this over read_file when learning how code connects — saves tokens and avoids re-reading files.",
+      parameters: {
+        type: "object",
+        properties: {
+          question: { type: "string", description: "What to find in the graph" },
+        },
+        required: ["question"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "graph_path",
+      description: "Shortest path between two Graphify nodes (e.g. AuthScreen and MainShell).",
+      parameters: {
+        type: "object",
+        properties: {
+          from: { type: "string" },
+          to: { type: "string" },
+        },
+        required: ["from", "to"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "graph_explain",
+      description: "Explain a Graphify node and its neighbors.",
+      parameters: {
+        type: "object",
+        properties: { node: { type: "string" } },
+        required: ["node"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "graph_god_nodes",
+      description: "List the most-connected architectural hubs in the graph.",
+      parameters: {
+        type: "object",
+        properties: { top: { type: "string", description: "How many (default 10)" } },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "graph_affected",
+      description: "Reverse impact analysis: what breaks if node X changes.",
+      parameters: {
+        type: "object",
+        properties: {
+          node: { type: "string" },
+          depth: { type: "string", description: "Traversal depth (default 2)" },
+        },
+        required: ["node"],
+      },
+    },
+  },
+
 ];
 
 async function approve(rl: readline.Interface, action: string): Promise<boolean> {
@@ -183,8 +261,13 @@ export async function runTool(
         const entries = await fs.readdir(resolveSafe(args.path), { withFileTypes: true });
         return entries.map((e) => (e.isDirectory() ? `${e.name}/` : e.name)).join("\n") || "(empty)";
       }
-      case "read_file":
-        return await fs.readFile(resolveSafe(args.path), "utf8");
+      case "read_file": {
+        const abs = resolveSafe(args.path);
+        const hint = readGuardHint(args.path);
+        const body = await fs.readFile(abs, "utf8");
+        noteFileRead(args.path);
+        return hint ? `${hint}\n\n${body}` : body;
+      }
       case "write_file": {
         const abs = resolveSafe(args.path);
         if (!(await approve(rl, `write ${args.path} (${args.content.length} chars)`))) {
@@ -229,6 +312,21 @@ export async function runTool(
         return await searchContextForTool(getAgentUserId(), args.query ?? "");
       case "run_agent_command":
         return await runCatalogCommand(args.slug ?? "", args.params ?? "{}", rl);
+      case "graph_query":
+        if (!isGraphifyEnabled()) return "graphify disabled";
+        return graphQuery(args.question ?? "");
+      case "graph_path":
+        if (!isGraphifyEnabled()) return "graphify disabled";
+        return graphPath(args.from ?? "", args.to ?? "");
+      case "graph_explain":
+        if (!isGraphifyEnabled()) return "graphify disabled";
+        return graphExplain(args.node ?? "");
+      case "graph_god_nodes":
+        if (!isGraphifyEnabled()) return "graphify disabled";
+        return graphGodNodes(Number(args.top || 10) || 10);
+      case "graph_affected":
+        if (!isGraphifyEnabled()) return "graphify disabled";
+        return graphAffected(args.node ?? "", Number(args.depth || 2) || 2);
       default:
         return `Unknown tool: ${name}`;
     }

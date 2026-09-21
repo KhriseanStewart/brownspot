@@ -36,7 +36,7 @@ export const SUMMARY_MODEL =
   process.env.AGENT_SUMMARY_MODEL ?? "google/gemini-3.8-flash";
 export const TOOL_RESULT_MAX_CHARS = intEnv("AGENT_TOOL_RESULT_MAX_CHARS", 6_000);
 
-export const MEM0_ENABLED = boolEnv("AGENT_MEM0", false);
+export const MEM0_ENABLED = boolEnv("AGENT_MEM0", true);
 export const MEM0_API_KEY = process.env.MEM0_API_KEY;
 export function getAgentUserId(): string {
   return (
@@ -135,6 +135,16 @@ export const REF_SEARCH_LIMIT = intEnv("BROWNSPOT_REF_SEARCH_LIMIT", 8);
 export const REF_MAX_DEPTH = intEnv("BROWNSPOT_REF_MAX_DEPTH", 6);
 export const REF_MAX_FILES = intEnv("BROWNSPOT_REF_MAX_FILES", 800);
 export const REF_MAX_FILE_BYTES = intEnv("BROWNSPOT_REF_MAX_FILE_BYTES", 120_000);
+
+/** Graphify knowledge graph — ON by default (local AST, cheap). */
+export const GRAPHIFY_ENABLED = boolEnv("BROWNSPOT_GRAPHIFY", true);
+/** Prefer code-only extract (no LLM) for cost. */
+export const GRAPHIFY_CODE_ONLY = boolEnv("BROWNSPOT_GRAPHIFY_CODE_ONLY", true);
+/** Background watch while CLI session is alive. */
+export const GRAPHIFY_WATCH = boolEnv("BROWNSPOT_GRAPHIFY_WATCH", true);
+/** Token budget for auto-injected graph query results. */
+export const GRAPHIFY_QUERY_BUDGET = intEnv("BROWNSPOT_GRAPHIFY_QUERY_BUDGET", 1600);
+
 
 export function requireConfig(): void {
   // Hosted mode: Clerk login + BROWNSPOT_API_URL — no local AGENT_API_KEY.

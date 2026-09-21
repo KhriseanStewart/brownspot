@@ -32,6 +32,13 @@ import { handleModelCommand, modelLabelForBanner } from "./agent/model-prefs.ts"
 import { handleTokensCommand } from "./agent/tokens-command.ts";
 import { isSnipAvailable, snipVersion } from "./agent/snip.ts";
 import { handleRefsCommand, runRefsStartup } from "./agent/refs/index.ts";
+import {
+  handleGraphifyCommand,
+  isGraphifyEnabled,
+  runGraphifyStartup,
+  resolveGraphifyBin,
+  graphifyVersion,
+} from "./agent/graphify/index.ts";
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -78,9 +85,13 @@ async function main() {
     console.log(style.dim("snip · not bundled yet · bun run download-snip"));
   }
 
-  if (isMem0Enabled()) ensureReady();
+  // Memory ON by default (local SQLite if no MEM0_API_KEY)
+  ensureReady();
 
   const rl = readline.createInterface({ input, output });
+
+  // Graphify always-on: AST graph + background watch (no OpenRouter for code extract)
+  await runGraphifyStartup();
 
   // Optional refs (0–3) + eager active-project reindex
   await runRefsStartup(rl, session.userId);
@@ -88,15 +99,16 @@ async function main() {
   const messages = await createInitialMessages();
 
   printBanner(WORKSPACE, modelLabelForBanner());
-  if (isMem0Enabled()) {
+  {
+    const gf = isGraphifyEnabled()
+      ? resolveGraphifyBin()
+        ? `graphify ${graphifyVersion() ?? "on"}`
+        : "graphify install-needed"
+      : "graphify off";
     console.log(
       style.dim(
-        `memory on · ${memoryBackend()} · user ${getAgentUserId()}${AGENT_AGENT_ID ? ` · agent ${AGENT_AGENT_ID}` : ` · role ${AGENT_ROLE}`} · /model · /tokens · /refs · /memory help · /whoami · /update\n`,
+        `memory ${isMem0Enabled() ? "on · " + memoryBackend() : "off"} · ${gf} · /graphify · /refs · /model · /tokens · /memory · /whoami · /update\n`,
       ),
-    );
-  } else {
-    console.log(
-      style.dim(`memory off · /model · /tokens · /refs · /memory help · /whoami · /update\n`),
     );
   }
 
@@ -137,6 +149,7 @@ async function main() {
     if (handleModelCommand(line)) continue;
     if (handleTokensCommand(line)) continue;
     if (await handleMemoryCommand(line)) continue;
+    if (handleGraphifyCommand(line)) continue;
     if (await handleRefsCommand(line, session.userId)) continue;
 
     messages.push({ role: "user", content: line });

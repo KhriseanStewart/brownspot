@@ -148,3 +148,17 @@ bun run db:seed-commands   # safe to re-run; upserts by slug
 
 Add more later with another seed row or `INSERT`/`ON CONFLICT` against `agent_commands`. Ad-hoc commands still use `run_shell`.
 
+## Graphify + memory (always on)
+
+BrownSpot keeps a **Graphify** AST knowledge graph for the current workspace and turns **memory on by default** (local SQLite, or Mem0 Platform if `MEM0_API_KEY` is set).
+
+```bash
+# one-time host install of the Graphify CLI
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv tool install graphifyy
+```
+
+On `dotstart` start: builds/updates `graphify-out/graph.json` (code-only, no OpenRouter) and starts `graphify watch`. Agent tools: `graph_query`, `graph_path`, `graph_explain`, `graph_god_nodes`, `graph_affected`. Slash: `/graphify …`.
+
+Disable with `BROWNSPOT_GRAPHIFY=false` or `AGENT_MEM0=false`.
+

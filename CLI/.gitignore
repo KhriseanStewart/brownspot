@@ -39,3 +39,7 @@ AGENT_MEMORY.md
 
 resources/snip/**/snip
 resources/snip/**/snip.exe
+
+# Graphify local knowledge graph
+graphify-out/
+

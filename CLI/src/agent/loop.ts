@@ -14,6 +14,7 @@ import {
 import { firstLine, renderMarkdown, spinner, style } from "./style.ts";
 import { runTool, tools } from "./tools.ts";
 import { retrieveForTurn } from "./refs/retrieve.ts";
+import { graphContextForTurn, isGraphifyEnabled } from "./graphify/index.ts";
 
 export async function createInitialMessages(): Promise<ChatCompletionMessageParam[]> {
   const fileMemory = await loadFileMemory();
@@ -24,7 +25,7 @@ export async function createInitialMessages(): Promise<ChatCompletionMessagePara
       content:
         `You are a helpful general-purpose assistant running in a CLI. ` +
         `Your workspace is ${WORKSPACE}. Answer normal questions directly. ` +
-        `Only use file tools when the user asks you to inspect or change files. Be concise. For git/gh/ssh/docker/package ops prefer list_agent_commands then run_agent_command (catalog in Postgres; extensible). Use run_shell for one-off commands not in the catalog. Use list_reference_projects / search_reference_context for indexed reference and active project style context. ` +
+        `Only use file tools when the user asks you to inspect or change files. Be concise. For git/gh/ssh/docker/package ops prefer list_agent_commands then run_agent_command (catalog in Postgres; extensible). Use run_shell for one-off commands not in the catalog. Use list_reference_projects / search_reference_context for indexed reference and active project style context. Prefer graph_query / graph_path / graph_explain / graph_god_nodes / graph_affected over repeatedly read_file on the same paths — the Graphify graph is always kept up to date. ` +
         `Do not write AGENT_MEMORY.md unless the user explicitly asks — lasting preferences are stored by the memory system automatically.` +
         (fileMemory ? `\n\nPersistent file memory (AGENT_MEMORY.md):\n${fileMemory}` : ""),
     },
@@ -68,6 +69,19 @@ export async function runTurn(
     if (note) {
       messages.push({ role: "system", content: note });
       refsNoteIndex = messages.length - 1;
+    }
+  }
+
+  let graphNoteIndex = -1;
+  if (isGraphifyEnabled()) {
+    try {
+      const gnote = graphContextForTurn(userText);
+      if (gnote) {
+        messages.push({ role: "system", content: gnote });
+        graphNoteIndex = messages.length - 1;
+      }
+    } catch {
+      /* never block the turn */
     }
   }
 
@@ -151,6 +165,14 @@ export async function runTurn(
       }
     }
   } finally {
+    if (graphNoteIndex >= 0 && messages[graphNoteIndex]?.role === "system") {
+      const c = messages[graphNoteIndex].content;
+      if (typeof c === "string" && c.startsWith("Code knowledge graph")) {
+        messages.splice(graphNoteIndex, 1);
+        if (refsNoteIndex > graphNoteIndex) refsNoteIndex -= 1;
+        if (memNoteIndex > graphNoteIndex) memNoteIndex -= 1;
+      }
+    }
     if (refsNoteIndex >= 0 && messages[refsNoteIndex]?.role === "system") {
       const c = messages[refsNoteIndex].content;
       if (typeof c === "string" && c.startsWith("Reference / active project context")) {
